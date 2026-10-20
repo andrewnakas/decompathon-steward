@@ -1,7 +1,7 @@
 [project]
-name = "decomp-steward"
+name = "decompathon-steward"
 version = "0.1.0"
-description = "Claude-powered maintainer and orchestrator for decompilation projects: deterministic gates decide, agents triage and explain"
+description = "Decompathon Steward: Claude-powered maintainer and orchestrator for decompilation projects: deterministic gates decide, agents triage and explain"
 requires-python = ">=3.11"
 dependencies = []
 

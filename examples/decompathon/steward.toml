@@ -1,10 +1,10 @@
-# Steward config for the Recompathon Skate 3 jam repo.
+# Steward config for the Decompathon Skate 3 jam repo.
 # In the real repo this file sits at the root and `root` is omitted; here it points at the local checkout.
 
 [project]
-name = "recompathon-skate3"
-repo = "recompathon/skate3"          # placeholder, nothing is published
-root = "E:/recompathon"
+name = "decompathon-skate3"
+repo = "decompathon/skate3"          # placeholder, nothing is published
+root = "E:/decompathon"
 default_branch = "main"
 unit_paths = ["games/skate3/decomp/**"]
 unit_regex = 'sub_([0-9A-Fa-f]{8})\.cpp$'
@@ -22,7 +22,7 @@ max_units_per_pr = 20                # RULES.md 7
 protected_paths = [
   "tools/**", "RULES.md", "SCORING.md", "docs/**",
   "games/*/functions.csv", "games/*/verdicts.csv", "games/*/pure_functions.inc",
-  "games/*/imports.inc", "games/*/jam_glue.cpp", "games/*/recompathon.cmake",
+  "games/*/imports.inc", "games/*/jam_glue.cpp", "games/*/decompathon.cmake",
 ]
 required_checkboxes = [
   "No game files, recompiled code or retail bytes",

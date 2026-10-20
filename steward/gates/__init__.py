@@ -33,7 +33,7 @@ def parse(gate, code, out, head_sha):
                       {'tail': out[-TAIL:]})
 
 
-# recompathon tools/rexcheck/gate.py output
+# decompathon tools/rexcheck/gate.py output
 MUT = re.compile(r'^mutants: (\d+)/(\d+) caught', re.M)
 ZL = re.compile(r'^zero-loss vs \S+: (\d+) WORSE, (\d+) better/new', re.M)
 WORSE = re.compile(r'^\s*WORSE 0x([0-9A-F]{8}): (\S+) -> (\S+)', re.M)
