@@ -1,0 +1,50 @@
+# Steward config for the Recompathon Skate 3 jam repo.
+# In the real repo this file sits at the root and `root` is omitted; here it points at the local checkout.
+
+[project]
+name = "recompathon-skate3"
+repo = "recompathon/skate3"          # placeholder, nothing is published
+root = "E:/recompathon"
+default_branch = "main"
+unit_paths = ["games/skate3/decomp/**"]
+unit_regex = 'sub_([0-9A-Fa-f]{8})\.cpp$'
+function_table = "games/skate3/functions.csv"
+
+[policy]
+auto_merge = true
+first_timer_needs_human = true
+owner_rule_days = 7
+claim_max_bytes = 0x2000
+claim_max_open = 3
+claim_lapse_days = 14
+claim_warn_days = 10
+max_units_per_pr = 20                # RULES.md 7
+protected_paths = [
+  "tools/**", "RULES.md", "SCORING.md", "docs/**",
+  "games/*/functions.csv", "games/*/verdicts.csv", "games/*/pure_functions.inc",
+  "games/*/imports.inc", "games/*/jam_glue.cpp", "games/*/recompathon.cmake",
+]
+required_checkboxes = [
+  "No game files, recompiled code or retail bytes",
+  "Provenance is honest",
+]
+
+# Public: GitHub-hosted, no secrets, no game files.
+[[gates]]
+name = "scan"
+run = "python tools/score/jam.py scan"
+where = "public"
+
+# Judge box: sandboxed, holds the owner's game install. judge.py does not exist yet (M3).
+[[gates]]
+name = "rexcheck"
+run = "python tools/rexcheck/judge.py --pr {pr}"
+where = "judge"
+kind = "rexcheck-gate"
+timeout = 5400
+
+[models]
+triage = "claude-haiku-5-5"
+review = "claude-sonnet-5-5"
+plan = "claude-opus-5-5"
+mentor = "claude-sonnet-5-5"

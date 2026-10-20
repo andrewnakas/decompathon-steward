@@ -1,0 +1,14 @@
+[project]
+name = "decomp-steward"
+version = "0.1.0"
+description = "Claude-powered maintainer and orchestrator for decompilation projects: deterministic gates decide, agents triage and explain"
+requires-python = ">=3.11"
+dependencies = []
+
+[project.optional-dependencies]
+agents = ["claude-agent-sdk"]
+discord = ["discord.py"]
+test = ["pytest"]
+
+[tool.pytest.ini_options]
+testpaths = ["tests"]
