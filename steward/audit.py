@@ -8,6 +8,8 @@ import os
 import time
 from dataclasses import asdict
 
+from .config import unit_label
+
 GENESIS = '0' * 64
 
 
@@ -35,7 +37,7 @@ def append(path, pr, decision, gates, cfg, model=None, now=None):
         'author': pr.author,
         'head_sha': pr.head_sha,
         'action': decision.action,
-        'units': [f'0x{u:08X}' for u in decision.units],
+        'units': [unit_label(u) for u in decision.units],
         'reasons': [asdict(r) for r in decision.reasons],
         'gates': [{'name': g.name, 'status': g.status, 'head_sha': g.head_sha,
                    'output_sha256': g.output_sha256} for g in gates],

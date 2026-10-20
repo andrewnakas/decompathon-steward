@@ -152,3 +152,15 @@ def test_strongest_reason_wins(cfg):
     g[0] = GateResult('scan', 'fail', 'x', SHA)
     d = run(cfg, pr(files=['decomp/a/sub_82000040.cpp', 'tools/x.py']), gates=g)
     assert d.action == 'escalate' and {'protected-path', 'gate-fail'} <= rules(d)
+
+
+def test_no_progress(cfg):
+    g = green()
+    g[1] = GateResult('oracle', 'pass', '0 lost, 0 new', SHA, details={'better': [], 'worse': []})
+    d = run(cfg, gates=g)
+    assert d.action == 'request_changes' and rules(d) == {'no-progress'}
+    g[1].details['better'] = [{'addr': '82000040', 'was': 'new', 'now': 'behaviour'}]
+    assert run(cfg, gates=g).action == 'merge'
+    cfg.policy.require_progress = False
+    g[1].details['better'] = []
+    assert run(cfg, gates=g).action == 'merge'

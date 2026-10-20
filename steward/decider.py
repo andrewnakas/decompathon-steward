@@ -7,6 +7,7 @@ blocking rule is reported, and the strongest one sets the action:
 import re
 from dataclasses import dataclass, field
 
+from .config import unit_label
 from .state import DAY
 
 ACTIONS = ('merge', 'wait', 'request_changes', 'escalate')
@@ -24,6 +25,7 @@ class PR:
     draft: bool = False
     author_merged_prs: int = 0      # merged PRs by this author in this repo before this one
     is_maintainer: bool = False
+    added: list = field(default_factory=list)   # files the PR creates (nobody owns them yet)
 
 
 @dataclass
@@ -62,7 +64,7 @@ def decide(pr, gates, state, cfg, sizes, now):
     def block(action, rule, msg):
         reasons.append(Reason(action, rule, msg))
 
-    units = sorted({u for u in (cfg.unit_of(f) for f in pr.files) if u is not None})
+    units = sorted({u for u in (cfg.unit_of(f) for f in pr.files) if u is not None}, key=str)
 
     if pr.draft:
         block('wait', 'draft', 'PR is a draft')
@@ -75,10 +77,10 @@ def decide(pr, gates, state, cfg, sizes, now):
     if len(units) > pol.max_units_per_pr:
         block('request_changes', 'too-big', f'{len(units)} functions, the limit is {pol.max_units_per_pr} per PR')
 
-    unknown = [u for u in units if sizes and u not in sizes]
+    unknown = [u for u in units if sizes and isinstance(u, int) and u not in sizes]   # new files are normal
     if unknown:
         block('request_changes', 'unknown-unit',
-              'not in the function table: ' + ', '.join(f'0x{u:08X}' for u in unknown[:5]))
+              'not in the function table: ' + ', '.join(unit_label(u) for u in unknown[:5]))
 
     ticked = [m.strip().lower() for m in CHECKED.findall(pr.body or '')]
     missing = [box for box in pol.required_checkboxes if not any(box.lower() in t for t in ticked)]
@@ -89,12 +91,14 @@ def decide(pr, gates, state, cfg, sizes, now):
     for u in units:
         c = state.holder(u, sizes.get(u, 1))
         if c and c.user != pr.author:
-            block('request_changes', 'claimed', f'0x{u:08X} is claimed by {c.user} (claim #{c.id})')
+            block('request_changes', 'claimed', f'{unit_label(u)} is claimed by {c.user} (claim #{c.id})')
         elif not c and pol.require_claim and not pr.is_maintainer:
-            block('request_changes', 'unclaimed', f'claim 0x{u:08X} first (/claim)')
+            block('request_changes', 'unclaimed', f'claim {unit_label(u)} first (/claim)')
 
     # owner rule: changing someone else's merged function
-    for owner in sorted({state.owner(u) for u in units} - {None, pr.author}):
+    owned = [u for u in units if not (isinstance(u, str) and u in pr.added)]
+    exempt = pol.owner_rule_exempt_maintainers and pr.is_maintainer
+    for owner in sorted({state.owner(u) for u in owned} - {None, pr.author}) if not exempt else []:
         key = f'{pr.number}:{owner}'
         if key in state.consents:
             continue
@@ -120,6 +124,12 @@ def decide(pr, gates, state, cfg, sizes, now):
             block('escalate', 'gate-error', f'{g.name} broke ({r.summary or "no summary"}), not the PR\'s fault?')
         elif r.status != 'pass':
             block('escalate', 'gate-status', f'{g.name}: unknown status {r.status!r}')
+
+    # progress: gates that report per-unit gains (details['better']) must show at least one
+    reporting = [by_name[g.name] for g in cfg.gates if g.name in by_name and by_name[g.name].status == 'pass'
+                 and 'better' in by_name[g.name].details]
+    if pol.require_progress and units and reporting and not any(r.details['better'] for r in reporting):
+        block('request_changes', 'no-progress', 'no function got closer to retail (no new or better verdicts)')
 
     if not units and not protected:
         block('escalate', 'no-units', 'changes no decomp unit; a maintainer decides')

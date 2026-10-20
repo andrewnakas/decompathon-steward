@@ -1,6 +1,8 @@
 """The one PR comment Steward keeps edited (decomp-dev bot style), and the pinned claims issue."""
 import time
 
+from .config import unit_label
+
 MARK = '<!-- steward:report -->'
 ICON = {'merge': 'queued for merge', 'wait': 'waiting', 'request_changes': 'changes needed',
         'escalate': 'a maintainer will look'}
@@ -10,7 +12,7 @@ GICON = {'pass': 'pass', 'fail': 'FAIL', 'error': 'harness error', 'pending': 'p
 def pr_comment(decision, gates, ai_note=''):
     out = [MARK, f'### Steward (automated) - {ICON[decision.action]}', '']
     if decision.units:
-        out.append('Functions: ' + ', '.join(f'`0x{u:08X}`' for u in decision.units))
+        out.append('Functions: ' + ', '.join(f'`{unit_label(u)}`' for u in decision.units))
         out.append('')
     if gates:
         out += ['| Gate | Result | Summary |', '|---|---|---|']

@@ -1,0 +1,31 @@
+# Steward config modelled on halo2-decompiled's written rules (CONTRIBUTING.md, issue #9).
+# Used only for the read-only replay eval (evals/replay.py); Steward does not act on that repo.
+
+[project]
+name = "halo2-decompiled"
+repo = "kirklandsig/halo2-decompiled"
+root = "E:/halo2-decompiled"
+unit_kind = "file"
+unit_paths = ["src/*.cpp", "src/stubs/*.cpp"]
+function_table = "config/functions.csv"
+addr_column = "va"
+size_column = "size"
+source_column = "source"
+
+[policy]
+auto_merge = true
+first_timer_needs_human = true
+owner_rule_days = 7
+claim_max_bytes = 0x2000
+claim_lapse_days = 14
+max_units_per_pr = 20
+derived_paths = ["config/functions.csv"]       # every decomp PR updates statuses; check.py re-derives them
+maintainers = ["kirklandsig"]
+owner_rule_exempt_maintainers = true
+protected_paths = ["tools/**", "config/**", "tests/**", "CONTRIBUTING.md", "PROVENANCE.md", "LEGAL.md", "LICENSE", "README.md"]
+required_checkboxes = []
+
+[[gates]]
+name = "check"
+run = "python tools/check.py"
+where = "judge"

@@ -28,6 +28,10 @@ class Claim:
     source: str = ''            # issue/discord link
 
     def covers(self, addr, size=1, path=''):
+        if isinstance(addr, str):           # file unit
+            addr, path = 0, addr
+            if not self.path:
+                return False
         if self.path:
             return bool(path) and path == self.path
         return addr < self.end and self.start < addr + max(size, 1)
@@ -107,7 +111,11 @@ class State:
     # -- owners ------------------------------------------------------------
     def record_merge(self, author, addrs):
         for a in addrs:
-            self.owners.setdefault(f'{a:08X}', author)
+            self.owners.setdefault(_key(a), author)
 
     def owner(self, addr):
-        return self.owners.get(f'{addr:08X}')
+        return self.owners.get(_key(addr))
+
+
+def _key(u):
+    return f'{u:08X}' if isinstance(u, int) else u
