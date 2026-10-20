@@ -112,6 +112,9 @@ def test_rexcheck_parse(cfg):
     assert parse(g, 1, REX_BLIND, 'x').status == 'error'
     assert parse(g, 0, 'Traceback ...', 'x').status == 'error'
     assert parse(g, 1, REX_PASS, 'x').status == 'fail'     # PASS text but nonzero exit is not a pass
+    r = parse(g, 1, 'error C2065\nJUDGE FAIL compile: exit 1', 'x')
+    assert r.status == 'fail' and r.summary == 'compile: exit 1'
+    assert parse(g, 2, 'JUDGE ERROR sandbox: refusing', 'x').status == 'error'
 
 
 def test_command_gate_runs(cfg, tmp_path):

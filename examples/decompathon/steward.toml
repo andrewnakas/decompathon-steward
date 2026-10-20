@@ -35,10 +35,10 @@ name = "scan"
 run = "python tools/score/jam.py scan"
 where = "public"
 
-# Judge box: sandboxed, holds the owner's game install. judge.py does not exist yet (M3).
+# Judge box: sandboxed VM holding the owner's game install (DECOMPATHON_JUDGE_SANDBOX=1 set there).
 [[gates]]
 name = "rexcheck"
-run = "python tools/rexcheck/judge.py --pr {pr}"
+run = "python tools/rexcheck/judge.py --game skate3 --pr {pr}"
 where = "judge"
 kind = "rexcheck-gate"
 timeout = 5400

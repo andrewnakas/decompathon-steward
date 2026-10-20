@@ -9,6 +9,15 @@
 - 31 tests pass. Real run: decompathon jam.py scan gate passes (5 files) -> decide = WAIT on rexcheck (judge.py missing).
 - docs/DESIGN.md = approved plan (survey of halo2-decompiled, zeldaret, melee, papermario, pret, botw, Snowboard Kids 2).
 
-Next (M1): agents/ (Agent SDK, dontAsk + read-only tools, JSON schemas) triage/reviewer/planner on fixture PRs,
-injection corpus. Then M2 replay over halo2-decompiled history (read-only gh), M3 decompathon judge.py.
-Owner's word needed before M4 (GitHub App, test repo, Discord bot) and M5 (pilot; ask mchughalex first).
+2026-10-20 evening — M1, M2, M3 (judge side) done; rebranded to Decompathon Steward (repo E:/decompathon-steward)
+- M1: steward/agents (triage haiku / review sonnet / plan opus / mentor sonnet): one structured-output call each
+  (messages.parse + pydantic), no tools, untrusted text fenced + escaped, cached system prompt, refusal/error -> None ->
+  human. actions.py: model output can only add caution; validate() refuses enqueue_merge without a deterministic merge,
+  foreign labels, wrong PR/head. commands.py (/claim /unclaim /consent, actor from the event). roadmap.py + `steward next`.
+  Injection corpus tests/injection (7 bodies). evals/injection_eval.py = live version (needs an API key; NOT run yet).
+- M2: evals/replay.py over halo2-decompiled (620 PRs, read-only gh graphql): 11 -> 376 of 572 merges agree after
+  derived_paths, file units, added-file ownership, maintainers, require_progress. docs/REPLAY_HALO2.md.
+- M3: decompathon tools/rexcheck/judge.py + JUDGE FAIL/ERROR parsing here. 55 tests pass.
+
+Next: M4 needs the owner's word: GitHub App + private test repo + Discord bot (actuator, daemon, discord_bot not written).
+Live injection eval needs ANTHROPIC_API_KEY. Judge needs a sandbox VM decision + a mutant log + OK to launch the game.

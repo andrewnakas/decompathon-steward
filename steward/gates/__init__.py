@@ -41,7 +41,14 @@ BETTER = re.compile(r'^\s*\+\s+0x([0-9A-F]{8}): (\S+) -> (\S+)', re.M)
 VERDICT = re.compile(r'^GATE (PASS|FAIL)', re.M)
 
 
+JUDGE = re.compile(r'^JUDGE (FAIL|ERROR) (.+)$', re.M)
+
+
 def _rexcheck(gate, code, out, head_sha):
+    j = JUDGE.search(out)
+    if j:   # the judge stopped before gate.py: FAIL = the PR's code (no compile, game died), ERROR = harness
+        return GateResult(gate.name, 'fail' if j.group(1) == 'FAIL' else 'error', j.group(2)[:200], head_sha,
+                          _sha(out), {'tail': out[-TAIL:]})
     m, z, v = MUT.search(out), ZL.search(out), VERDICT.search(out)
     if not (m and z and v):
         # the harness itself broke: not the contributor's fault, a human looks
