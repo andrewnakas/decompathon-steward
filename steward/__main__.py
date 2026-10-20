@@ -7,13 +7,14 @@
   python -m steward sweep   --config steward.toml --state state.json
   python -m steward claims-issue --state state.json
   python -m steward audit-verify audit.jsonl
+  python -m steward next    --config steward.toml [--state state.json] [-n 20]
 """
 import argparse
 import json
 import sys
 import time
 
-from . import audit, config, report
+from . import audit, config, report, roadmap
 from .decider import PR, GateResult, decide
 from .state import ClaimError, State
 
@@ -103,6 +104,17 @@ def cmd_audit_verify(a):
     sys.exit(0 if ok else 1)
 
 
+def cmd_next(a):
+    c = _cfg(a)
+    st = State.load(a.state) if a.state else State()
+    rows = roadmap.load_table(c)
+    done = roadmap.done_from_verdicts(c)
+    s = roadmap.stats(rows, done)
+    print(f"{c.name}: {s['done_functions']}/{s['functions']} functions, {s['done_bytes']}/{s['bytes']} bytes ({s['percent']:.3f}%)")
+    for score, addr, size, name, near in roadmap.suggest(rows, done, lambda x, n: st.holder(x, n) is not None, a.n):
+        print(f'  0x{addr:08X} {size:6d} B  score {score:5.2f}  {name}{"  (next to done work)" if near else ""}')
+
+
 def main(argv=None):
     ap = argparse.ArgumentParser(prog='steward')
     sub = ap.add_subparsers(dest='cmd', required=True)
@@ -124,6 +136,9 @@ def main(argv=None):
     s.add_argument('--now', type=float); s.set_defaults(f=cmd_sweep)
     s = sub.add_parser('claims-issue'); s.add_argument('--state', required=True); s.set_defaults(f=cmd_claims_issue)
     s = sub.add_parser('audit-verify'); s.add_argument('file'); s.set_defaults(f=cmd_audit_verify)
+    s = sub.add_parser('next')
+    s.add_argument('--config', required=True); s.add_argument('--state'); s.add_argument('-n', type=int, default=20)
+    s.set_defaults(f=cmd_next)
     a = ap.parse_args(argv)
     a.f(a)
 
