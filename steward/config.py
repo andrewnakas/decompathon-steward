@@ -95,7 +95,7 @@ class Config:
                 if r.get(self.source_column):
                     sizes[r[self.source_column]] = sizes.get(r[self.source_column], 0) + int(r[self.size_column])
             return sizes
-        return {int(r[self.addr_column], 16): int(r[self.size_column]) for r in rows}
+        return {int(r[self.addr_column], 16): int(r[self.size_column], 0) for r in rows}
 
 
 def load(path):
