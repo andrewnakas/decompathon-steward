@@ -10,7 +10,7 @@ from typing import List, Literal
 
 from pydantic import BaseModel, Field
 
-from .base import Role, untrusted
+from .base import Role, backend_for, untrusted
 
 LABELS = ('decomp', 'tooling', 'docs', 'question', 'bug', 'claim', 'needs-provenance',
           'good-first-function', 'duplicate', 'hostile-content', 'spam', 'needs-maintainer')
@@ -144,5 +144,6 @@ def make(role, cfg, client=None, **kw):
     cls = {'triage': TriageRole, 'review': ReviewerRole, 'plan': PlannerRole, 'mentor': MentorRole}[role]
     default = {'triage': 'claude-haiku-5-5', 'review': 'claude-sonnet-5-5',
                'plan': 'claude-opus-5-5', 'mentor': 'claude-sonnet-5-5'}[role]
-    return cls(client=client, model=cfg.models.get(role, default), **kw)
+    backend = None if client is not None else backend_for(cfg.models.get('backend'))
+    return cls(client=client, model=cfg.models.get(role, default), backend=backend, **kw)
 

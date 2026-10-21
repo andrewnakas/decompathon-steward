@@ -33,6 +33,28 @@ def parse(gate, code, out, head_sha):
                       {'tail': out[-TAIL:]})
 
 
+def from_artifact(cfg, files, head_sha):
+    """Gate results from a CI artifact: meta.json + <name>.log + <name>.code per `run = "artifact:<name>"` gate.
+    A result for another head (or a missing file) is left out, which the decider treats as pending."""
+    import json
+    try:
+        meta = json.loads(files.get('meta.json', '{}'))
+    except ValueError:
+        meta = {}
+    if meta.get('head_sha') != head_sha:
+        return []
+    out = []
+    for g in cfg.gates:
+        if not g.run.startswith('artifact:'):
+            continue
+        name = g.run.split(':', 1)[1]
+        log, code = files.get(f'{name}.log'), files.get(f'{name}.code', '').strip()
+        if log is None or not code.lstrip('-').isdigit():
+            continue
+        out.append(parse(g, int(code), log, head_sha))
+    return out
+
+
 # decompathon tools/rexcheck/gate.py output
 MUT = re.compile(r'^mutants: (\d+)/(\d+) caught', re.M)
 ZL = re.compile(r'^zero-loss vs \S+: (\d+) WORSE, (\d+) better/new', re.M)
