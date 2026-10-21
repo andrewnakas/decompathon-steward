@@ -21,3 +21,11 @@
 
 Next: M4 needs the owner's word: GitHub App + private test repo + Discord bot (actuator, daemon, discord_bot not written).
 Live injection eval needs ANTHROPIC_API_KEY. Judge needs a sandbox VM decision + a mutant log + OK to launch the game.
+
+## 2026-10-21: judge gates run by the daemon
+- `steward/judge_runner.py` + `python -m steward.daemon ... --judge-workspace <dedicated checkout>`: where=judge command
+  gates (game files that never leave the judge box, e.g. THPS64 match/build) run once per PR head from the newest base,
+  with only the PR's unit files copied in; protected paths never reach a gate; workspace reset after. Git auth via env
+  (installation token never in argv/config/logs). tests/test_judge_runner.py.
+- GitHub App "Decompathon Steward" (id 5418450) installed on the private test repo; one live --once pass made the
+  claims issue + labels. tools/discord_setup.py lays out the community server (needs the bot token).

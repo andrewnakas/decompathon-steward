@@ -24,6 +24,7 @@ import traceback
 from . import actions, audit, commands, config, report, roadmap
 from .agents import roles
 from .decider import PR, decide
+from . import judge_runner
 from .gates import from_artifact
 from .github import App, GitHubError, Repo
 from .state import DAY, State
@@ -42,8 +43,9 @@ def iso(t):
 
 
 class Steward:
-    def __init__(self, repo, data_dir, use_ai=True, log=print):
+    def __init__(self, repo, data_dir, use_ai=True, log=print, judge=None):
         self.repo = repo
+        self.judge = judge          # judge_runner.JudgeRunner: runs where=judge gates on this machine
         self.data = data_dir
         os.makedirs(os.path.join(data_dir, 'repo'), exist_ok=True)
         self.state_path = os.path.join(data_dir, 'state.json')
@@ -205,14 +207,19 @@ class Steward:
         pr = PR(n, author, head, [f['filename'] for f in files], p.get('body') or '', p['draft'],
                 self.merged_count(author, n), self.is_maintainer(author),
                 [f['filename'] for f in files if f['status'] == 'added'])
-        status, art, run = self.repo.gate_artifact(head)
-        gates = from_artifact(self.cfg, art, head) if status == 'done' else []
-        d = decide(pr, gates, self.state, self.cfg, self.sizes, time.time())
-
         m = self.memo['prs'].setdefault(str(n), {})
         if m.get('head') != head:
             m.clear()
             m['head'] = head
+        status, art, run = self.repo.gate_artifact(head)
+        gates = from_artifact(self.cfg, art, head) if status == 'done' else []
+        if self.judge is not None and self.judge.judge_gates(self.cfg) and not pr.draft:
+            if 'judge' not in m:   # once per head: the oracle is deterministic
+                m['judge'] = judge_runner.to_json(self.judge.run(self.repo, self.cfg, self.branch, n, head, files))
+            gates += judge_runner.from_json(m['judge'])
+            if all(g.where == 'judge' for g in self.cfg.gates):
+                status = 'done'
+        d = decide(pr, gates, self.state, self.cfg, self.sizes, time.time())
         tri = rev = None
         if self.use_ai:
             if 'triage' not in m:
@@ -315,9 +322,11 @@ def main():
     ap.add_argument('--interval', type=int, default=60)
     ap.add_argument('--once', action='store_true')
     ap.add_argument('--no-ai', action='store_true')
+    ap.add_argument('--judge-workspace', help='dedicated local checkout where where=judge gates run (game files in place)')
     a = ap.parse_args()
     data = a.data or os.path.join(os.path.expanduser('~'), '.decompathon', 'data', a.repo.replace('/', '_'))
-    s = Steward(Repo(App(a.app), a.repo), data, use_ai=not a.no_ai)
+    judge = judge_runner.JudgeRunner(a.judge_workspace) if a.judge_workspace else None
+    s = Steward(Repo(App(a.app), a.repo), data, use_ai=not a.no_ai, judge=judge)
     while True:
         try:
             for e in s.tick():
