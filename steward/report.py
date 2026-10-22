@@ -77,6 +77,24 @@ def progress_line(p):
     return line + '.'
 
 
+def _hint(why):
+    """A plain next step for a match-gate failure, from the gate's own wording."""
+    w = why.lower()
+    if 'unit is' in w and 'more code follows' in w:
+        return ('your C covers only the start of this function: decompile the rest too, or, if the rest is a separate '
+                'function, ask a maintainer to split it (the address is in the message).')
+    if 'does not compile' in w:
+        return 'fix the compiler error above (types, missing declarations, syntax), then run `tools/match.py` again.'
+    if 'instructions agree' in w:
+        return ('run `python tools/match.py src/funcs/<file> --show` and adjust the C where it differs; typical fixes are '
+                'types (signed/unsigned, `u8` vs `s32`), statement order and temporaries.')
+    if 'does not define' in w:
+        return 'the file must define exactly the function its name says (`func_XXXXXXXX`).'
+    if 'lost' in w:
+        return 'this change deletes a function that already matched on main; keep that file.'
+    return ''
+
+
 def _gate_line(g):
     good, bad = GATE_TEXT.get(g.name, (f'the {g.name} check passed', f'the {g.name} check failed'))
     if g.status == 'pass':
@@ -85,7 +103,14 @@ def _gate_line(g):
         lines = [f'- **{g.name}** failed: {bad}.']
         tail = g.details.get('tail', '')
         for p in re.findall(r'^PROBLEM (.+)$', tail, re.M)[:5]:      # match gate: which file and why
-            lines.append(f'  - {p.strip()}')
+            fn, _, why = p.strip().partition(': ')
+            lines.append(f'  - `{fn}`: {why}' + (f'\n    _How to fix:_ {_hint(why)}' if _hint(why) else ''))
+            rows = re.findall(rf'^DIFFLINE {re.escape(fn)}: (.+?)\s*\|\s*(.+)$', tail, re.M)
+            if rows:
+                lines.append('    <details><summary>first differing instructions (yours | the game\'s)</summary>\n')
+                lines.append('    | yours | the game |\n    |---|---|')
+                lines += [f'    | `{a.strip()}` | `{b.strip()}` |' for a, b in rows[:8]]
+                lines.append('\n    </details>')
         diffs = re.findall(r'(0x[0-9A-Fa-f]{8}): built ([0-9A-Fa-f]{8}) game ([0-9A-Fa-f]{8})', tail + g.summary)
         for a, built, game in list(dict.fromkeys(diffs))[:3]:
             lines.append(f'  - at `{a}` your code produced the instruction word `{built}` where the game has `{game}`')

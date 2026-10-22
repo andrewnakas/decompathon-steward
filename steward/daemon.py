@@ -220,13 +220,14 @@ class Steward:
         gates = from_artifact(self.cfg, art, head) if status == 'done' else []
         labels = {l['name'] for l in p.get('labels', [])}
         trusted = pr.is_maintainer or pr.author_merged_prs > 0 or JUDGE_OK in labels
-        if self.judge is not None and self.judge.judge_gates(self.cfg) and not pr.draft and not trusted:
+        if self.judge is not None and self.judge.judge_gates(self.cfg) and not trusted:
             # the judge compiles PR code on the owner's machine: strangers wait for a maintainer's label
             gates += [GateResult(g.name, 'pending', f'waiting for a maintainer to approve running the checks '
                                  f'(label `{JUDGE_OK}`)', head) for g in self.judge.judge_gates(self.cfg)]
             if all(g.where == 'judge' for g in self.cfg.gates):
                 status = 'done'
-        elif self.judge is not None and self.judge.judge_gates(self.cfg) and not pr.draft:
+        elif self.judge is not None and self.judge.judge_gates(self.cfg):
+            # drafts are judged too (never merged): the author sees what fails while still working
             if 'judge' not in m:   # once per head: the oracle is deterministic
                 m['judge'] = judge_runner.to_json(self.judge.run(self.repo, self.cfg, self.branch, n, head, files))
                 m['judge_base'] = getattr(self.judge, 'last_base', None)
