@@ -87,7 +87,9 @@ class ReviewerRole(Role):
 # -- maintainer --------------------------------------------------------------
 class Verdict(BaseModel):
     decision: Literal['approve', 'request_changes', 'defer_to_owner']
-    rationale: str = Field(max_length=2500, description='markdown posted on the PR: what you checked and why')
+    summary: str = Field(max_length=300, description='one or two plain sentences: what the PR does and why you '
+                                                     'decided this way (shown first)')
+    rationale: str = Field(max_length=2500, description='markdown, folded under Details: what you checked')
     concerns: List[str] = Field(default_factory=list, max_length=8)
 
 
@@ -111,7 +113,8 @@ class MaintainerRole(Role):
         'licence or legal questions, anything that may include leaked source, symbols, SDK files or game '
         'data, changes to the rules/provenance/licence documents themselves, disputes between contributors, '
         'or when you are not confident. Judge tool changes on their stated evidence and diff: they must not '
-        'weaken a check, special-case a test, or let unverified code through. Be concrete and brief.'
+        'weaken a check, special-case a test, or let unverified code through. Be concrete and brief: the '
+        'summary is what people read, in plain words a newcomer understands; the rationale is the detail.'
     )
 
     def __init__(self, docs=None, **kw):

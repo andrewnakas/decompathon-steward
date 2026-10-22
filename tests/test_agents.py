@@ -193,7 +193,8 @@ def test_claude_code_backend_errors(monkeypatch):
 
 # -- AI maintainer (owner opt-in) ----------------------------------------------
 def verdict(decision='approve', **kw):
-    return roles.Verdict(decision=decision, rationale=kw.pop('rationale', 'checked the diff'), **kw)
+    return roles.Verdict(decision=decision, summary=kw.pop('summary', 'Adds one checked tool rule.'),
+                         rationale=kw.pop('rationale', 'checked the diff'), **kw)
 
 
 def escalated_pr(cfg, gate_status='pass'):
@@ -212,7 +213,8 @@ def test_maintainer_approval_merges_only_green_escalations(cfg):
     assert not any(a.kind == 'escalate' for a in acts)
     actions.validate(acts, d, pr, gates)
     report = [a for a in acts if a.kind == 'upsert_report'][0].args['body']
-    assert 'Maintainer decision (claude-opus-5-5): approve' in report
+    assert 'Maintainer decision (claude-opus-5-5): approve.** Adds one checked tool rule.' in report
+    assert report.index('Adds one checked') < report.index('<details>')
 
 
 @pytest.mark.parametrize('why', ['gate', 'hold', 'hostile'])

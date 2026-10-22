@@ -354,6 +354,9 @@ class Steward:
             after = prog['before'] + prog['new']
             text += (f' ({prog["new"]} new). The project is now at {after:,} / {prog["total"]:,} functions matched '
                      f'({100.0 * after / prog["total"]:.2f}%)')
+        maint = (self.memo['prs'].get(str(pr.number), {}).get('maint') or [None])[0]
+        if maint and maint.get('decision') == 'approve' and maint.get('summary'):
+            text += f'\nMaintainer (AI) approved: {maint["summary"]}'
         self._base_units = None     # the base branch moved
         self._base_sha = None
         events.append({'kind': 'merged', 'pr': pr.number, 'url': p['html_url'], 'author': pr.author, 'text': text})

@@ -84,11 +84,13 @@ def maintainer_plan(pr, decision, gates, verdict, base_actions, triage=None, lab
     why_not = maintainer_merge_ok(decision, gates, triage, labels) if verdict.decision == 'approve' else ''
     choice = 'defer_to_owner' if why_not else verdict.decision
     model = (meta or {}).get('id') or 'AI'
-    note = f'\n\n**Maintainer decision ({model}): {choice.replace("_", " ")}**\n\n{verdict.rationale}'
-    if verdict.concerns:
-        note += '\n\nConcerns:\n' + '\n'.join(f'- {c}' for c in verdict.concerns)
+    note = f'\n\n**Maintainer decision ({model}): {choice.replace("_", " ")}.** {verdict.summary}'
     if why_not:
         note += f'\n\n(It approved, but Steward will not merge on an AI call here: {why_not}.)'
+    details = verdict.rationale
+    if verdict.concerns:
+        details += '\n\nConcerns:\n' + '\n'.join(f'- {c}' for c in verdict.concerns)
+    note += f'\n\n<details><summary>Details</summary>\n\n{details}\n\n</details>'
     out = []
     for a in base_actions:
         if a.kind == 'upsert_report':
