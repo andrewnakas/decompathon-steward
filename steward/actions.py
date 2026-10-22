@@ -35,7 +35,7 @@ def final_action(decision, triage=None, review=None):
     return action, extra
 
 
-def plan(pr, decision, gates, triage=None, review=None, review_meta=None):
+def plan(pr, decision, gates, triage=None, review=None, review_meta=None, progress=None):
     action, extra = final_action(decision, triage, review)
     labels = {STATE_LABELS[action]}
     if triage is not None:
@@ -46,7 +46,7 @@ def plan(pr, decision, gates, triage=None, review=None, review_meta=None):
     note = review.explanation if review is not None else ''
     if review is not None and review.fix_hints:
         note += '\n\nTry:\n' + '\n'.join(f'- {h}' for h in review.fix_hints)
-    body = report.pr_comment(decision, gates, ai_note=note)
+    body = report.pr_comment(decision, gates, ai_note=note, progress=progress, author=pr.author)
     if extra:
         body += '\n\n**Escalated to a maintainer** (an AI check asked for a human):\n' + '\n'.join(
             f'- {who}: {why}' for who, why in extra)

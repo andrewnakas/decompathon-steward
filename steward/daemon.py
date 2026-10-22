@@ -80,6 +80,7 @@ class Steward:
             os.makedirs(os.path.dirname(path), exist_ok=True)
             open(path, 'w', encoding='utf-8').write(table)
         self.cfg, self.branch = cfg, branch
+        self._base_units = None
         self.sizes = cfg.load_sizes()
 
     def bootstrap_owners(self):
@@ -237,7 +238,9 @@ class Steward:
             if m.get('review') and m['review'][0]:
                 rev = roles.Review(**m['review'][0])
 
-        action, acts = actions.plan(pr, d, gates, tri, rev)
+        prog = self.progress(d.units)
+        m['progress'] = prog
+        action, acts = actions.plan(pr, d, gates, tri, rev, progress=prog)
         actions.validate(acts, d, pr)
         sig = hashlib.sha256(json.dumps([[a.kind, a.args] for a in acts], sort_keys=True, default=str).encode()).hexdigest()
         if m.get('sig') == sig and action != 'merge':
@@ -292,9 +295,27 @@ class Steward:
             if c and c.user == pr.author:
                 self.state.claims.remove(c)
         self.memo['merged_counts'] = {}
-        events.append({'kind': 'merged', 'pr': pr.number, 'url': p['html_url'], 'author': pr.author,
-                       'text': f'#{pr.number} by @{pr.author} merged: ' + ', '.join(f'0x{u:08X}' for u in ints)})
+        prog = self.memo['prs'].get(str(pr.number), {}).get('progress') or {}
+        text = f'#{pr.number} by @{pr.author} merged: ' + ', '.join(f'0x{u:08X}' for u in ints)
+        if prog.get('total'):
+            after = prog['before'] + prog['new']
+            text += (f'
+{prog["new"]} new, the project is now at {after:,} / {prog["total"]:,} functions matched '
+                     f'({100.0 * after / prog["total"]:.2f}%)')
+        self._base_units = None     # the base branch moved
+        events.append({'kind': 'merged', 'pr': pr.number, 'url': p['html_url'], 'author': pr.author, 'text': text})
         self.log(f'#{pr.number}: merged')
+
+    def progress(self, units):
+        """Matched units on the base branch, and how many of this PR's units are new, against the function table."""
+        if getattr(self, '_base_units', None) is None:
+            self._base_units = {u for u in (self.cfg.unit_of(t['path']) for t in self.repo.tree(self.branch)
+                                            if t['type'] == 'blob') if u is not None}
+        base = self._base_units
+        new = [u for u in units if u not in base]
+        return {'before': len(base), 'new': len(new), 'total': len(self.sizes),
+                'bytes_before': sum(self.sizes.get(u, 0) for u in base),
+                'bytes_new': sum(self.sizes.get(u, 0) for u in new), 'bytes_total': sum(self.sizes.values())}
 
     # -- tick ------------------------------------------------------------
     def tick(self):
