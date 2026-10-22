@@ -83,3 +83,8 @@ def test_unsafe_paths_are_skipped(tmp_path):
     repo = FakeRepo({'src/funcs/../../evil/func_80000300.c': 'x'})
     JudgeRunner(str(ws), log=lambda *_: None, remote=str(origin)).run(repo, cfg, 'main', 2, 'abc', files)
     assert not (tmp_path / 'evil').exists()
+
+
+def test_service_modules_import():
+    import steward.bot  # noqa: F401  (the daemon and bot have no other tests that import them)
+    import steward.daemon  # noqa: F401

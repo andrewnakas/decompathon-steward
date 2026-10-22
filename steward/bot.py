@@ -20,6 +20,7 @@ from discord import app_commands
 from .agents import roles
 from .daemon import Steward
 from .github import App, Repo
+from .judge_runner import JudgeRunner
 
 FOOT = '-# Steward (automated)'
 
@@ -149,9 +150,11 @@ def main():
     ap.add_argument('--data')
     ap.add_argument('--interval', type=int, default=60)
     ap.add_argument('--no-ai', action='store_true')
+    ap.add_argument('--judge-workspace', help='dedicated checkout where where=judge gates run')
     a = ap.parse_args()
     data = a.data or os.path.join(os.path.expanduser('~'), '.decompathon', 'data', a.repo.replace('/', '_'))
-    steward = Steward(Repo(App(a.app), a.repo), data, use_ai=not a.no_ai)
+    judge = JudgeRunner(a.judge_workspace) if a.judge_workspace else None
+    steward = Steward(Repo(App(a.app), a.repo), data, use_ai=not a.no_ai, judge=judge)
     steward.refresh_config()
     make_bot(steward, a.interval).run(token(), log_handler=None)
 

@@ -299,8 +299,7 @@ class Steward:
         text = f'#{pr.number} by @{pr.author} merged: ' + ', '.join(f'0x{u:08X}' for u in ints)
         if prog.get('total'):
             after = prog['before'] + prog['new']
-            text += (f'
-{prog["new"]} new, the project is now at {after:,} / {prog["total"]:,} functions matched '
+            text += (f' ({prog["new"]} new). The project is now at {after:,} / {prog["total"]:,} functions matched '
                      f'({100.0 * after / prog["total"]:.2f}%)')
         self._base_units = None     # the base branch moved
         events.append({'kind': 'merged', 'pr': pr.number, 'url': p['html_url'], 'author': pr.author, 'text': text})
