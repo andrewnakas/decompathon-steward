@@ -93,7 +93,7 @@ def _gate_line(g):
             lines[0] += f' Detail: `{g.summary.strip()}`'
         return '\n'.join(lines)
     if g.status == 'pending':
-        return f'- **{g.name}** is still running.'
+        return f'- **{g.name}** has not run yet: {g.summary}.' if g.summary else f'- **{g.name}** is still running.'
     return f"- **{g.name}** hit a problem on my side (not your fault): `{g.summary.strip()}`"
 
 

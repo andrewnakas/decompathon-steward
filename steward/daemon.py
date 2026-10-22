@@ -23,7 +23,7 @@ import traceback
 
 from . import actions, audit, commands, config, report, roadmap
 from .agents import roles
-from .decider import PR, decide
+from .decider import PR, GateResult, decide
 from . import judge_runner
 from .gates import from_artifact
 from .github import App, GitHubError, Repo
@@ -36,6 +36,9 @@ LABEL_COLORS = {'steward:queued': '0e8a16', 'steward:waiting': 'fbca04', 'stewar
                 'duplicate': 'cfd3d7', 'spam': '000000'}
 LINK = re.compile(r'^\s*/link\s+([A-Za-z0-9]{6,32})\s*$', re.M)
 CLAIMS_MARK = '<!-- steward:claims -->'
+
+
+JUDGE_OK = 'judge-ok'   # maintainer label: run the judge gates for a contributor without a merged PR
 
 
 def iso(t):
@@ -215,7 +218,15 @@ class Steward:
             m['head'] = head
         status, art, run = self.repo.gate_artifact(head)
         gates = from_artifact(self.cfg, art, head) if status == 'done' else []
-        if self.judge is not None and self.judge.judge_gates(self.cfg) and not pr.draft:
+        labels = {l['name'] for l in p.get('labels', [])}
+        trusted = pr.is_maintainer or pr.author_merged_prs > 0 or JUDGE_OK in labels
+        if self.judge is not None and self.judge.judge_gates(self.cfg) and not pr.draft and not trusted:
+            # the judge compiles PR code on the owner's machine: strangers wait for a maintainer's label
+            gates += [GateResult(g.name, 'pending', f'waiting for a maintainer to approve running the checks '
+                                 f'(label `{JUDGE_OK}`)', head) for g in self.judge.judge_gates(self.cfg)]
+            if all(g.where == 'judge' for g in self.cfg.gates):
+                status = 'done'
+        elif self.judge is not None and self.judge.judge_gates(self.cfg) and not pr.draft:
             if 'judge' not in m:   # once per head: the oracle is deterministic
                 m['judge'] = judge_runner.to_json(self.judge.run(self.repo, self.cfg, self.branch, n, head, files))
             gates += judge_runner.from_json(m['judge'])
