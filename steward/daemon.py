@@ -230,7 +230,10 @@ class Steward:
         elif self.judge is not None and self.judge.judge_gates(self.cfg):
             # drafts are judged too (never merged): the author sees what fails while still working
             if 'judge' in m and m.get('judge_base') != self.base_sha():
-                m.pop('judge')       # main moved since: tools, splits or other functions may have changed
+                if self.only_other_units(m.get('judge_base'), pr.files):
+                    m['judge_base'] = self.base_sha()   # main only gained other functions: the result still holds
+                else:
+                    m.pop('judge')   # tools, config or these functions changed on main: judge again
             if 'judge' not in m:   # once per head and base: the oracle is deterministic
                 m['judge'] = judge_runner.to_json(self.judge.run(self.repo, self.cfg, self.branch, n, head, files))
                 m['judge_base'] = getattr(self.judge, 'last_base', None)
@@ -303,6 +306,8 @@ class Steward:
             # the judge already tested this PR's units on top of a fresh base: no branch update needed, only a
             # re-judge if the base has moved since (the merge commit then carries exactly what was tested)
             now = self.repo.get(f'/git/ref/heads/{fresh["base"]["ref"]}')['object']['sha']
+            if now != m['judge_base'] and self.only_other_units(m['judge_base'], pr.files):
+                m['judge_base'] = now
             if now != m['judge_base']:
                 m.pop('judge', None)
                 m.pop('judge_base', None)
@@ -333,6 +338,18 @@ class Steward:
         self._base_sha = None
         events.append({'kind': 'merged', 'pr': pr.number, 'url': p['html_url'], 'author': pr.author, 'text': text})
         self.log(f'#{pr.number}: merged')
+
+    def only_other_units(self, old, pr_files):
+        """True when every file main changed since `old` is a unit file this PR does not touch. Units compile on
+        their own, so a judge result for this PR stays valid across such merges (no O(n^2) re-judging)."""
+        if not old:
+            return False
+        try:
+            changed = [f['filename'] for f in self.repo.get(f'/compare/{old}...{self.base_sha()}').get('files', [])]
+        except GitHubError:
+            return False
+        mine = set(pr_files)
+        return bool(changed) and all(self.cfg.unit_of(f) is not None and f not in mine for f in changed)
 
     def base_sha(self):
         if getattr(self, '_base_sha', None) is None:
