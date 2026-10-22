@@ -46,8 +46,9 @@ def iso(t):
 
 
 class Steward:
-    def __init__(self, repo, data_dir, use_ai=True, log=print, judge=None):
+    def __init__(self, repo, data_dir, use_ai=True, log=print, judge=None, ai_maintainer=False):
         self.repo = repo
+        self.ai_maintainer = ai_maintainer   # owner opt-in: an Opus maintainer makes the call on escalations
         self.judge = judge          # judge_runner.JudgeRunner: runs where=judge gates on this machine
         self.data = data_dir
         os.makedirs(os.path.join(data_dir, 'repo'), exist_ok=True)
@@ -261,16 +262,35 @@ class Steward:
         prog = self.progress(d.units)
         m['progress'] = prog
         action, acts = actions.plan(pr, d, gates, tri, rev, progress=prog)
-        actions.validate(acts, d, pr)
+        if action == 'escalate' and self.use_ai and self.ai_maintainer and status == 'done' and not pr.draft:
+            if 'maint' not in m:   # once per head: the call is cached like the review
+                _, extra = actions.final_action(d, tri, rev)
+                diff = '\n'.join(f'--- {f["filename"]} ({f["status"]})\n{f.get("patch", "")}' for f in files)
+                out, meta = roles.make('maintainer', self.cfg, docs=self.policy_docs()).run(
+                    d, gates, extra, diff, p['title'], pr.body, author)
+                m['maint'] = (out.model_dump() if out else None, meta)
+            if m['maint'][0]:
+                action, acts = actions.maintainer_plan(pr, d, gates, roles.Verdict(**m['maint'][0]), acts, tri,
+                                                       labels, m['maint'][1])
+        actions.validate(acts, d, pr, gates, tri, labels)
         sig = hashlib.sha256(json.dumps([[a.kind, a.args] for a in acts], sort_keys=True, default=str).encode()).hexdigest()
         if m.get('sig') == sig and action != 'merge':
             return
-        model = {k: m[k][1] for k in ('triage', 'review') if m.get(k)}
+        model = {k: m[k][1] for k in ('triage', 'review', 'maint') if m.get(k)}
         audit.append(self.audit_path, pr, d, gates, self.cfg, model=model or None)
         for a in acts:
             self.execute(a, pr, p, d, events)
         m['sig'] = sig
         m['action'] = action
+
+    def policy_docs(self):
+        docs = {}
+        for path in ('RULES.md', 'AGENTS.md', 'PROVENANCE.md', 'CONTRIBUTING.md'):
+            try:
+                docs[path] = self.repo.file_text(path, self.branch)
+            except Exception:
+                pass
+        return docs
 
     def execute(self, a, pr, p, d, events):
         n = pr.number
@@ -393,11 +413,13 @@ def main():
     ap.add_argument('--interval', type=int, default=60)
     ap.add_argument('--once', action='store_true')
     ap.add_argument('--no-ai', action='store_true')
+    ap.add_argument('--ai-maintainer', action='store_true',
+                    help='an Opus maintainer decides escalated PRs (owner opt-in; label maintainer-hold keeps one for a human)')
     ap.add_argument('--judge-workspace', help='dedicated local checkout where where=judge gates run (game files in place)')
     a = ap.parse_args()
     data = a.data or os.path.join(os.path.expanduser('~'), '.decompathon', 'data', a.repo.replace('/', '_'))
     judge = judge_runner.JudgeRunner(a.judge_workspace) if a.judge_workspace else None
-    s = Steward(Repo(App(a.app), a.repo), data, use_ai=not a.no_ai, judge=judge)
+    s = Steward(Repo(App(a.app), a.repo), data, use_ai=not a.no_ai, judge=judge, ai_maintainer=a.ai_maintainer)
     while True:
         try:
             for e in s.tick():

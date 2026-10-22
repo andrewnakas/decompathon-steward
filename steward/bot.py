@@ -150,11 +150,12 @@ def main():
     ap.add_argument('--data')
     ap.add_argument('--interval', type=int, default=60)
     ap.add_argument('--no-ai', action='store_true')
+    ap.add_argument('--ai-maintainer', action='store_true', help='an Opus maintainer decides escalated PRs')
     ap.add_argument('--judge-workspace', help='dedicated checkout where where=judge gates run')
     a = ap.parse_args()
     data = a.data or os.path.join(os.path.expanduser('~'), '.decompathon', 'data', a.repo.replace('/', '_'))
     judge = JudgeRunner(a.judge_workspace) if a.judge_workspace else None
-    steward = Steward(Repo(App(a.app), a.repo), data, use_ai=not a.no_ai, judge=judge)
+    steward = Steward(Repo(App(a.app), a.repo), data, use_ai=not a.no_ai, judge=judge, ai_maintainer=a.ai_maintainer)
     steward.refresh_config()
     make_bot(steward, a.interval).run(token(), log_handler=None)
 

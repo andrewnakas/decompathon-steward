@@ -29,3 +29,14 @@ Live injection eval needs ANTHROPIC_API_KEY. Judge needs a sandbox VM decision +
   (installation token never in argv/config/logs). tests/test_judge_runner.py.
 - GitHub App "Decompathon Steward" (id 5418450) installed on the private test repo; one live --once pass made the
   claims issue + labels. tools/discord_setup.py lays out the community server (needs the bot token).
+
+## 2026-10-22: AI maintainer (owner decision)
+- Owner: escalations ("needs a maintainer") are decided by an Opus-level maintainer, not left for the owner.
+- `--ai-maintainer` (bot + daemon): MaintainerRole (claude-opus-5-5, effort high; project RULES/AGENTS/PROVENANCE/
+  CONTRIBUTING in the system prompt, PR text + diff fenced as untrusted) runs once per head on escalated, non-draft
+  PRs whose gates are done -> approve / request_changes / defer_to_owner, posted in the PR report and audited.
+- An approval merges only if actions.maintainer_merge_ok(): every gate passed, every rule is merge or escalate (no
+  waiting/failing rule), no hostile content, no `maintainer-hold` label (owner's per-PR veto); validate() re-checks.
+  The role is told to defer licence/legal, leaked material, rule-document changes, disputes, low confidence.
+- tests/test_agents.py: 6 tests (approve merges green escalations only; gate/hold/hostile block a forged merge;
+  request_changes/defer; fencing). 69 pass.
