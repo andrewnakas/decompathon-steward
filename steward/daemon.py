@@ -84,6 +84,7 @@ class Steward:
             open(path, 'w', encoding='utf-8').write(table)
         self.cfg, self.branch = cfg, branch
         self._base_units = None
+        self._base_sha = None
         self.sizes = cfg.load_sizes()
 
     def bootstrap_owners(self):
@@ -228,7 +229,9 @@ class Steward:
                 status = 'done'
         elif self.judge is not None and self.judge.judge_gates(self.cfg):
             # drafts are judged too (never merged): the author sees what fails while still working
-            if 'judge' not in m:   # once per head: the oracle is deterministic
+            if 'judge' in m and m.get('judge_base') != self.base_sha():
+                m.pop('judge')       # main moved since: tools, splits or other functions may have changed
+            if 'judge' not in m:   # once per head and base: the oracle is deterministic
                 m['judge'] = judge_runner.to_json(self.judge.run(self.repo, self.cfg, self.branch, n, head, files))
                 m['judge_base'] = getattr(self.judge, 'last_base', None)
             gates += judge_runner.from_json(m['judge'])
@@ -327,8 +330,14 @@ class Steward:
             text += (f' ({prog["new"]} new). The project is now at {after:,} / {prog["total"]:,} functions matched '
                      f'({100.0 * after / prog["total"]:.2f}%)')
         self._base_units = None     # the base branch moved
+        self._base_sha = None
         events.append({'kind': 'merged', 'pr': pr.number, 'url': p['html_url'], 'author': pr.author, 'text': text})
         self.log(f'#{pr.number}: merged')
+
+    def base_sha(self):
+        if getattr(self, '_base_sha', None) is None:
+            self._base_sha = self.repo.get(f'/git/ref/heads/{self.branch}')['object']['sha']
+        return self._base_sha
 
     def progress(self, units):
         """Matched units on the base branch, and how many of this PR's units are new, against the function table."""
