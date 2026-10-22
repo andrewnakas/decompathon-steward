@@ -16,7 +16,7 @@ Survey facts that shape the design:
 - **The rules worth copying come from halo2-decompiled:**
   - The oracle decides.
   - Full-tree zero-loss.
-  - A pinned claims issue: one file or ≤0x2000 bytes per claim, lapsing after 14 days.
+  - A pinned claims issue: one file or ≤0x2000 bytes per claim, lapsing after 7 days (owner decision 2026-10-21; halo2 uses 14).
   - A 7-day owner-consent rule.
   - Provenance tick boxes plus a name rescan on every merge.
   - Merge commits to keep authorship.
@@ -62,7 +62,7 @@ docs/            DESIGN.md (replaces the missing MAINTAINER_AGENT.md), POLICY_TE
   3. The privileged gates run on the judge box, inside a sandbox (next bullet): build, oracle, full zero-loss, and the mutant gate if the harness changed.
   4. The decider runs. On `merge`, the actuator enqueues the PR into the GitHub merge queue (merge commit, `merge_group` re-runs the checks). On anything else, the reviewer comments with the failure explained, or the PR is escalated to the owner's digest.
 - **Judge sandbox:** PR C++ is compiled and run inside the game. Untrusted code on the owner's PC is the biggest risk, so it runs in a disposable VM or Windows Sandbox with no network and no tokens. Results come back as files. Workflow runs from first-time contributors need approval.
-- **Claims:** `/claim <addr|file>` on GitHub or Discord updates state and re-renders the pinned issue. Claims are limited by size and count, and the owner of an overlapping claim is notified. Steward expires a claim after 14 days without activity, after warning at day 10.
+- **Claims:** `/claim <addr|file>` on GitHub or Discord updates state and re-renders the pinned issue. Claims are limited by size and count, and the owner of an overlapping claim is notified. Steward expires a claim after 7 days without activity, after warning at day 5 (configurable per project).
 - **Owner rule:** a PR that touches someone else's merged function gets a consent ask, then waits up to 7 days. It proceeds on consent or silence and keeps the original author's credit.
 - **Orchestration (nightly planner):**
   - Refresh the roadmap from the function table and verdicts.

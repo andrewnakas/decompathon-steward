@@ -32,8 +32,13 @@ EXPLAIN = {
     'no-units': "I couldn't find any function files in this PR, so a maintainer will review it by hand.",
     'protected-path': ('This touches project tooling, config or rules. Only maintainers change those, '
                        'so one will review it.'),
-    'checklist': ('Please tick the boxes in the PR description: no game files, and an honest note on how it '
-                  'was made (AI help is fine, just say so).'),
+    'checklist': ('Please tick every provenance box in the PR description. They confirm the work is yours, '
+                  'that no leaked material or game data is in it, and that you decompiled lawfully from a copy of '
+                  'the game you own, using tools you may legally use.'),
+    'made-by': 'Please tick exactly one box saying who made this PR: you, or an AI agent working for you.',
+    'agent-ack': ("This PR says an AI agent prepared it, so the agent has to tick the agent acknowledgement too, "
+                  "on every PR: it checked each statement against this PR's actual changes, and its human is "
+                  "responsible for the contribution."),
     'claimed': 'Someone else has claimed one of these functions. Please check with them first (`/status` shows claims).',
     'unclaimed': 'Please claim these functions first (`/claim 0xADDR`) so nobody else works on them at the same time.',
     'gate-fail': "A check failed. The details above show which function and where its bytes differ from the game.",
@@ -128,11 +133,11 @@ def pr_comment(decision, gates, ai_note='', progress=None, author=None):
     return '\n'.join(out)
 
 
-def claims_issue(state, now=None):
+def claims_issue(state, now=None, lapse_days=7, warn_days=5):
     now = now or time.time()
     out = ['<!-- steward:claims -->', '## Active claims', '',
            'Claim with `/claim 0xADDR SIZE` or `/claim path/to/file` (here or on Discord). '
-           'Claims lapse after 14 days without activity.', '',
+           f'Claims lapse after {lapse_days} days without activity (I post a reminder after {warn_days}).', '',
            '| # | Who | What | Last activity |', '|---|---|---|---|']
     for c in sorted(state.claims, key=lambda c: (c.start, c.path)):
         days = int((now - c.last_activity) // 86400)

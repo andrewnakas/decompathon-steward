@@ -164,3 +164,27 @@ def test_no_progress(cfg):
     cfg.policy.require_progress = False
     g[1].details['better'] = []
     assert run(cfg, gates=g).action == 'merge'
+
+
+def _provenance(cfg):
+    cfg.policy.made_by_checkboxes = ['Written by me', 'Prepared by an AI agent']
+    cfg.policy.agent_marker = 'Prepared by an AI agent'
+    cfg.policy.agent_checkboxes = ['Agent acknowledgement']
+    return cfg
+
+
+def test_made_by_must_be_ticked_exactly_once(cfg):
+    _provenance(cfg)
+    assert rules(run(cfg)) == {'made-by'}                                   # neither ticked
+    both = BODY + '- [x] Written by me\n- [x] Prepared by an AI agent (model: x)\n'
+    assert rules(run(cfg, pr(body=both))) == {'made-by'}
+    assert run(cfg, pr(body=BODY + '- [x] Written by me\n')).action == 'merge'
+
+
+def test_agent_pr_needs_its_acknowledgement_every_time(cfg):
+    _provenance(cfg)
+    agent = BODY + '- [x] Prepared by an AI agent (model: x)\n- [ ] Agent acknowledgement: I checked each box\n'
+    d = run(cfg, pr(body=agent))
+    assert d.action == 'request_changes' and rules(d) == {'agent-ack'}
+    acked = agent.replace('- [ ] Agent acknowledgement', '- [x] Agent acknowledgement')
+    assert run(cfg, pr(body=acked)).action == 'merge'

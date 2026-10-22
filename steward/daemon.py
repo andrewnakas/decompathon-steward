@@ -5,7 +5,7 @@
 Each tick:
  1. refresh config + function table from the repo's default branch (policy = what is merged);
  2. slash commands in new comments (/claim /unclaim /consent /next /status /link);
- 3. claims sweep (warn at day 10, expire at 14) + pinned claims issue;
+ 3. claims sweep (warn at day 5, expire at 7: policy claim_warn_days / claim_lapse_days) + pinned claims issue;
  4. every open PR: facts -> gates (CI artifact for the current head) -> decide -> Claude triage/review
     (once per head) -> clamp -> act (labels, one edited report comment, owner asks, merge);
  5. return events (merged, escalated, claims, ...) for Discord.
@@ -169,7 +169,8 @@ class Steward:
         self.memo['warned'] = sorted(warned & {str(c.id) for c in self.state.claims})
         if self.memo.get('claims_issue') is None:
             self.memo['claims_issue'] = self.repo.find_issue(CLAIMS_MARK, 'Active claims')
-        body = report.claims_issue(self.state)
+        body = report.claims_issue(self.state, lapse_days=self.cfg.policy.claim_lapse_days,
+                                   warn_days=self.cfg.policy.claim_warn_days)
         if body != self.memo.get('claims_body'):
             self.repo.edit_issue(self.memo['claims_issue'], body)
             self.memo['claims_body'] = body

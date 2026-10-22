@@ -37,8 +37,8 @@ class Policy:
     owner_rule_days: int = 7
     claim_max_bytes: int = 0x2000
     claim_max_open: int = 3
-    claim_lapse_days: int = 14
-    claim_warn_days: int = 10
+    claim_lapse_days: int = 7
+    claim_warn_days: int = 5
     require_claim: bool = False
     max_units_per_pr: int = 20
     merge_method: str = 'merge'
@@ -48,6 +48,11 @@ class Policy:
     require_progress: bool = True   # halo2 #424: keep a change only when it brings code closer to retail
     owner_rule_exempt_maintainers: bool = False
     required_checkboxes: list = field(default_factory=list)
+    # provenance (halo2-decompiled style): tick exactly one "who made this" box; an agent-made PR must also tick
+    # every agent box, on every PR (an attestation is never carried over from an earlier PR)
+    made_by_checkboxes: list = field(default_factory=list)   # e.g. ["Written by me", "Prepared by an AI agent"]
+    agent_marker: str = ''                                   # the made_by box that means an agent prepared it
+    agent_checkboxes: list = field(default_factory=list)
 
 
 @dataclass

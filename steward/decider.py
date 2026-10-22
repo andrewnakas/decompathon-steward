@@ -86,6 +86,14 @@ def decide(pr, gates, state, cfg, sizes, now):
     missing = [box for box in pol.required_checkboxes if not any(box.lower() in t for t in ticked)]
     if missing:
         block('request_changes', 'checklist', 'unticked: ' + '; '.join(missing))
+    if pol.made_by_checkboxes:
+        made = [box for box in pol.made_by_checkboxes if any(box.lower() in t for t in ticked)]
+        if len(made) != 1:
+            block('request_changes', 'made-by', 'tick exactly one of: ' + '; '.join(pol.made_by_checkboxes))
+        elif pol.agent_marker and made[0].lower() == pol.agent_marker.lower():
+            unacked = [box for box in pol.agent_checkboxes if not any(box.lower() in t for t in ticked)]
+            if unacked:
+                block('request_changes', 'agent-ack', 'agent boxes unticked: ' + '; '.join(unacked))
 
     # claims: someone else's claim always wins (halo2: lanes make way for contributors)
     for u in units:

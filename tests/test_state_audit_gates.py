@@ -37,12 +37,12 @@ def test_release_only_by_holder(cfg):
 def test_sweep_warns_then_expires(cfg):
     st = State()
     st.claim('a', cfg.policy, NOW, start=0x82000000, size=4)
-    assert st.sweep(cfg.policy, NOW + 9 * DAY) == ([], [])
-    exp, warn = st.sweep(cfg.policy, NOW + 10 * DAY)
+    assert st.sweep(cfg.policy, NOW + 4 * DAY) == ([], [])          # warn at day 5, lapse at day 7
+    exp, warn = st.sweep(cfg.policy, NOW + 5 * DAY)
     assert not exp and len(warn) == 1
-    st.touch('a', NOW + 10 * DAY)
-    assert st.sweep(cfg.policy, NOW + 19 * DAY) == ([], [])
-    exp, _ = st.sweep(cfg.policy, NOW + 24 * DAY)
+    st.touch('a', NOW + 5 * DAY)
+    assert st.sweep(cfg.policy, NOW + 9 * DAY) == ([], [])
+    exp, _ = st.sweep(cfg.policy, NOW + 12 * DAY)
     assert len(exp) == 1 and not st.claims
 
 
