@@ -72,7 +72,7 @@ class Steward:
         branch = info['default_branch']
         d = os.path.join(self.data, 'repo')
         text = self.repo.file_text('steward.toml', branch)
-        open(os.path.join(d, 'steward.toml'), 'w', encoding='utf-8').write(text)
+        open(os.path.join(d, 'steward.toml'), 'w', encoding='utf-8', newline='').write(text)
         cfg = config.load(os.path.join(d, 'steward.toml'))
         if cfg.function_table:
             table = self.repo.file_text(cfg.function_table, branch)

@@ -202,7 +202,7 @@ def main():
     chans = api.call('GET', f'/guilds/{g}/channels')
     by = {(c.get('parent_id'), c['name'].lower()): c for c in chans}
     cats = {c['name'].upper(): c for c in chans if c['type'] == CATEGORY}
-    ids = {}
+    ids, convert = {}, []
     layout = [(cat, [(s, TEXT, f'{t}: progress, questions and claims talk for this project.', None, {})
                      for s, t in projects] + items if cat == 'PROJECTS' else items) for cat, items in LAYOUT]
     for pos, (cat, items) in enumerate(layout):
@@ -217,7 +217,7 @@ def main():
                 ids[name] = by[key]['id']
                 continue
             # the default #general (or any same-named channel outside our categories) is moved, not duplicated
-            ours = {c['id'] for c in cats.values()}
+            ours = {c['id'] for k, c in cats.items() if k in {cat for cat, _ in layout}}
             stray = [c for c in chans if c['name'].lower() == name.lower() and c['type'] == typ and c.get('parent_id') not in ours]
             if stray:
                 body = {'parent_id': pid}
@@ -230,7 +230,9 @@ def main():
                 by[key] = stray[0]
                 print(f'  #{name} (moved)')
                 continue
-            body = {'name': name, 'type': typ, 'parent_id': pid,
+            if typ == ANNOUNCEMENT:   # needs Community mode: created as text, converted once Community is on
+                convert.append(name)
+            body = {'name': name, 'type': TEXT if typ == ANNOUNCEMENT else typ, 'parent_id': pid,
                     'permission_overwrites': overwrites(mode if cat != 'STAFF' else STAFF, g, roles, me['id'])}
             if topic and typ != VOICE:
                 body['topic'] = topic
@@ -251,11 +253,15 @@ def main():
                                           'description': 'Decomp jams: turn game binaries back into matching C, together.'})
         print('  community mode on')
     api.call('PATCH', f'/guilds/{g}', {'system_channel_id': ids['introductions'], 'system_channel_flags': 0})
+    for name in convert:
+        api.call('PATCH', f'/channels/{ids[name]}', {'type': ANNOUNCEMENT})
+        print(f'  #{name} -> announcement channel')
 
     proj_opts = [{'title': t, 'description': f'#{s} + its ping role', 'role_ids': [roles[f'{t} ping']],
                   'channel_ids': [ids[s]]} for s, t in projects]
     onboarding = {'enabled': True, 'mode': 0, 'default_channel_ids': [ids[c] for c in
-                  ('welcome', 'rules', 'announcements', 'faq', 'general', 'introductions', 'showcase', 'decomp-help', 'progress')],
+                  ('welcome', 'rules', 'announcements', 'faq', 'general', 'introductions', 'showcase', 'off-topic',
+                   'decomp-help', 'matching', 'tools-and-setup', 'progress')],
                   'prompts': [
                       {'type': 0, 'title': 'What brings you here?', 'single_select': False, 'required': False, 'in_onboarding': True,
                        'options': [
@@ -278,6 +284,11 @@ def main():
                             'role_ids': [roles['Jam ping']], 'channel_ids': []},
                        ]},
                   ]}
+    flake = (int(time.time() * 1000) - 1420070400000) << 22   # onboarding prompts/options need client-made snowflakes
+    for i, pr in enumerate(onboarding['prompts']):
+        pr['id'] = str(flake + 100 * i)
+        for j, o in enumerate(pr['options']):
+            o['id'] = str(flake + 100 * i + j + 1)
     api.call('PUT', f'/guilds/{g}/onboarding', onboarding)
     print('  onboarding set')
 
