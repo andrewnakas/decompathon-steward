@@ -29,7 +29,7 @@ from .gates import from_artifact
 from .github import App, GitHubError, Repo
 from .state import DAY, State
 
-LABEL_COLORS = {'steward:queued': '0e8a16', 'steward:waiting': 'fbca04', 'steward:changes-needed': 'd93f0b',
+LABEL_COLORS = {'steward:queued': '0e8a16', 'steward:merged': '6f42c1', 'steward:waiting': 'fbca04', 'steward:changes-needed': 'd93f0b',
                 'steward:maintainer': '5319e7', 'hostile-content': 'b60205', 'needs-maintainer': '5319e7',
                 'needs-provenance': 'c5def5', 'good-first-function': '7057ff', 'decomp': '1d76db',
                 'tooling': 'bfdadc', 'docs': '0075ca', 'question': 'd876e3', 'bug': 'd73a4a', 'claim': 'c2e0c6',
@@ -229,6 +229,7 @@ class Steward:
         elif self.judge is not None and self.judge.judge_gates(self.cfg) and not pr.draft:
             if 'judge' not in m:   # once per head: the oracle is deterministic
                 m['judge'] = judge_runner.to_json(self.judge.run(self.repo, self.cfg, self.branch, n, head, files))
+                m['judge_base'] = getattr(self.judge, 'last_base', None)
             gates += judge_runner.from_json(m['judge'])
             if all(g.where == 'judge' for g in self.cfg.gates):
                 status = 'done'
@@ -293,13 +294,24 @@ class Steward:
         fresh = self.repo.pr(pr.number)
         if fresh['state'] != 'open' or fresh['head']['sha'] != pr.head_sha:
             return
-        if self.repo.behind_by(fresh['base']['ref'], pr.head_sha) > 0:
-            # gates ran against an old base: bring the branch up to date; CI reruns on the new head
+        m = self.memo['prs'].get(str(pr.number), {})
+        if m.get('judge_base'):
+            # the judge already tested this PR's units on top of a fresh base: no branch update needed, only a
+            # re-judge if the base has moved since (the merge commit then carries exactly what was tested)
+            now = self.repo.get(f'/git/ref/heads/{fresh["base"]["ref"]}')['object']['sha']
+            if now != m['judge_base']:
+                m.pop('judge', None)
+                m.pop('judge_base', None)
+                self.log(f'#{pr.number}: base moved since judging, re-judging')
+                return
+        elif self.repo.behind_by(fresh['base']['ref'], pr.head_sha) > 0:
+            # CI gates ran against an old base: bring the branch up to date; CI reruns on the new head
             self.repo.update_branch(pr.number, pr.head_sha)
             self.log(f'#{pr.number}: behind base, branch updated')
             return
         self.repo.merge(pr.number, pr.head_sha, self.cfg.policy.merge_method,
                         title=f'{fresh["title"]} (#{pr.number})')
+        self.repo.set_labels(pr.number, ['steward:merged'])
         ints = [u for u in d.units if isinstance(u, int)]
         self.state.record_merge(pr.author, d.units)
         for u in d.units:   # a merged function's claim is fulfilled
@@ -332,8 +344,8 @@ class Steward:
     def tick(self):
         events = []
         self.refresh_config()
-        self.repo.ensure_labels(LABEL_COLORS) if not self.memo.get('labels_ok') else None
-        self.memo['labels_ok'] = True
+        self.repo.ensure_labels(LABEL_COLORS) if self.memo.get('labels_ok') != len(LABEL_COLORS) else None
+        self.memo['labels_ok'] = len(LABEL_COLORS)
         self.bootstrap_owners()
         self.poll_commands(events)
         self.sweep(events)

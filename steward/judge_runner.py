@@ -60,6 +60,7 @@ class JudgeRunner:
         tok = repo.app.token(repo.repo)
         self._git('fetch', '--quiet', self.remote or f'https://github.com/{repo.repo}.git', branch, token=tok)
         base = self._git('rev-parse', 'FETCH_HEAD').strip()
+        self.last_base = base       # the base commit these results are valid for
         try:
             self._reset(cfg, base)
             for f in files:
