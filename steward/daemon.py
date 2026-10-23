@@ -220,6 +220,13 @@ class Steward:
         if m.get('head') != head:
             m.clear()
             m['head'] = head
+        body_sig = hashlib.sha256(((p.get('title') or '') + '\0' + (p.get('body') or '')).encode()).hexdigest()
+        if m.get('body_sig') != body_sig:
+            # the AI calls read the title and description (checklist claims, "what this changes"): an edit to them
+            # must get a fresh review, or a fixed description keeps its old "request changes" (judge results stay)
+            for k in ('triage', 'review', 'maint', 'action', 'escalated'):
+                m.pop(k, None)
+            m['body_sig'] = body_sig
         status, art, run = self.repo.gate_artifact(head)
         gates = from_artifact(self.cfg, art, head) if status == 'done' else []
         labels = {l['name'] for l in p.get('labels', [])}
