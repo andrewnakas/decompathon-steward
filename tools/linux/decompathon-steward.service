@@ -1,0 +1,24 @@
+# systemd user unit: cp to ~/.config/systemd/user/, edit the two paths, then
+#   systemctl --user daemon-reload && systemctl --user enable --now decompathon-steward
+#   loginctl enable-linger $USER     # keep it running when you are logged out
+[Unit]
+Description=Decompathon Steward (thps64) under its watchdog
+After=network-online.target
+
+[Service]
+Type=simple
+WorkingDirectory=%h/decompathon-steward
+Environment=THPS64_JUDGE=%h/thps64-judge
+# the judge runs `python tools/gate.py` / `tools/build.py` through the shell: put the venv (with pyelftools,
+# rabbitizer, splat64) first on PATH so `python` resolves there
+Environment=PATH=%h/decompathon-steward/.venv/bin:/usr/local/bin:/usr/bin:/bin
+# the judge's toolchain (Linux builds of cc1 / gas / zig), see docs/HANDOFF_LINUX.md
+Environment=THPS_TOOLS=%h/thps64-tools/bin
+Environment=THPS_CC1=%h/thps64-tools/gcc-2.8.1-pm/cc1.exe
+Environment=ZIG=%h/.local/zig/zig
+ExecStart=/bin/sh %h/decompathon-steward/tools/linux/start_steward.sh
+Restart=always
+RestartSec=30
+
+[Install]
+WantedBy=default.target
