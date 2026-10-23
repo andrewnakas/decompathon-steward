@@ -68,7 +68,7 @@ python tools/split.py && python tools/build.py                                  
 ```
 Never edit it by hand afterwards; the Steward resets it per PR.
 
-## 5. PR state at handoff (43 PRs merged on 2026-10-23)
+## 5. PR state at handoff (43 PRs merged on 2026-10-23; main = 841 of 2457 functions matched, ~34%)
 Merged today incl. tools: #77 splitter tails, #79 jump-table alignment, #80 per-file cflags (owner), #82 no
 multiply in delay slots, #85 identities (owner), #95 local-jump check; batches #75 #76 #78 #83 #94; Codex #53 #87 #88.
 
