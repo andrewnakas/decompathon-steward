@@ -143,6 +143,15 @@ def make_bot(steward, interval):
     return client
 
 
+def raise_priority():
+    """Judge gates compile on a shared machine: above-normal priority (inherited by the gate's compilers) keeps PR
+    turnaround short when other jobs saturate the CPU. Windows only; elsewhere use nice."""
+    if os.name == 'nt':
+        import ctypes
+        ABOVE_NORMAL_PRIORITY_CLASS = 0x8000
+        ctypes.windll.kernel32.SetPriorityClass(ctypes.windll.kernel32.GetCurrentProcess(), ABOVE_NORMAL_PRIORITY_CLASS)
+
+
 def main():
     ap = argparse.ArgumentParser()
     ap.add_argument('--repo', required=True)
@@ -152,7 +161,11 @@ def main():
     ap.add_argument('--no-ai', action='store_true')
     ap.add_argument('--ai-maintainer', action='store_true', help='an Opus maintainer decides escalated PRs')
     ap.add_argument('--judge-workspace', help='dedicated checkout where where=judge gates run')
+    ap.add_argument('--normal-priority', action='store_true',
+                    help='do not raise the process priority (by default judge builds outrank background jobs)')
     a = ap.parse_args()
+    if not a.normal_priority:
+        raise_priority()
     data = a.data or os.path.join(os.path.expanduser('~'), '.decompathon', 'data', a.repo.replace('/', '_'))
     judge = JudgeRunner(a.judge_workspace) if a.judge_workspace else None
     steward = Steward(Repo(App(a.app), a.repo), data, use_ai=not a.no_ai, judge=judge, ai_maintainer=a.ai_maintainer)
