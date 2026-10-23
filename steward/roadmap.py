@@ -57,9 +57,13 @@ def done_from_verdicts(cfg, name='verdicts.csv'):
         return {int(r['addr'], 16) for r in csv.DictReader(f) if r.get('verdict') in ('behaviour', 'byte')}
 
 
+def _size(r):
+    return int(r.get('size') or '0', 0)   # functions.csv writes sizes in hex (0xCC); plain decimal still works
+
+
 def stats(rows, done):
-    total = sum(int(r.get('size') or 0) for r in rows)
-    sizes = {int(r['addr'], 16): int(r.get('size') or 0) for r in rows}
+    total = sum(_size(r) for r in rows)
+    sizes = {int(r['addr'], 16): _size(r) for r in rows}
     got = sum(sizes.get(a, 0) for a in done)
     return {'functions': len(rows), 'bytes': total, 'done_functions': len(done), 'done_bytes': got,
             'percent': 100.0 * got / total if total else 0.0}

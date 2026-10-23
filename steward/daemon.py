@@ -415,7 +415,10 @@ class Steward:
         self.repo.ensure_labels(LABEL_COLORS) if self.memo.get('labels_ok') != len(LABEL_COLORS) else None
         self.memo['labels_ok'] = len(LABEL_COLORS)
         self.bootstrap_owners()
-        self.poll_commands(events)
+        try:
+            self.poll_commands(events)
+        except Exception:   # a broken command reply must not stop the PR queue (2026-10-23: /status crashed ticks)
+            self.log('command polling failed:\n' + traceback.format_exc()[-1500:])
         self.sweep(events)
         for p in self.repo.open_prs():
             heartbeat.beat(f'pr #{p["number"]}')
