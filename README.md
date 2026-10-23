@@ -11,7 +11,7 @@ The maintainer + orchestrator of the Decompathon decomp jams, built around Claud
 - **Everything is logged** in a hash-chained `audit.jsonl`.
 - **Any game:** one `steward.toml` per project (see `examples/decompathon/steward.toml`).
 
-Status: M0 (deterministic core, offline). Nothing is published. See `STATUS.md` and `docs/DESIGN.md`.
+Status: live. It maintains [andrewnakas/thps64](https://github.com/andrewnakas/thps64) as the GitHub App "Decompathon Steward" (judge gates, AI maintainer on escalations, Discord bot), running on Linux under `steward.watchdog` (`tools/linux/`, `docs/HANDOFF_LINUX.md`). See `STATUS.md` and `docs/DESIGN.md`.
 
 ```
 python -m pytest -q
