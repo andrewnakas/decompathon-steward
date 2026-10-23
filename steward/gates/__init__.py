@@ -4,24 +4,52 @@ Gates always run from a pinned base checkout (cwd) with the PR's decomp files co
 caller; a PR can never change the gate's own scripts (those paths are protected).
 """
 import hashlib
+import os
 import re
+import signal
 import subprocess
 
 from ..decider import GateResult
+from .. import heartbeat
 
 TAIL = 4000
 
 
+def kill_tree(p):
+    """Kill a gate's whole process tree. Killing only the shell leaves its children (compilers, linkers) running
+    and holding the output pipes open, so the caller would wait on them forever."""
+    try:
+        if os.name == 'nt':
+            subprocess.run(['taskkill', '/T', '/F', '/PID', str(p.pid)], capture_output=True, timeout=60)
+        else:
+            os.killpg(p.pid, signal.SIGKILL)
+    except (OSError, subprocess.SubprocessError):
+        pass
+    try:
+        p.kill()
+    except OSError:
+        pass
+
+
 def run(gate, cwd, head_sha, pr_number=0, env=None):
     cmd = gate.run.format(pr=pr_number, sha=head_sha)
+    heartbeat.beat(f'gate {gate.name} #{pr_number}')
+    group = {'creationflags': subprocess.CREATE_NEW_PROCESS_GROUP} if os.name == 'nt' else {'start_new_session': True}
+    p = subprocess.Popen(cmd, shell=True, cwd=cwd, env=env, stdout=subprocess.PIPE, stderr=subprocess.PIPE,
+                         text=True, errors='replace', **group)
     try:
-        p = subprocess.run(cmd, shell=True, cwd=cwd, env=env, capture_output=True,
-                           text=True, errors='replace', timeout=gate.timeout)
-        out, code = p.stdout + p.stderr, p.returncode
-    except subprocess.TimeoutExpired as e:
-        out = (e.stdout or '') if isinstance(e.stdout, str) else ''
-        return GateResult(gate.name, 'error', f'timed out after {gate.timeout}s', head_sha, _sha(out))
-    return parse(gate, code, out, head_sha)
+        so, se = p.communicate(timeout=gate.timeout)
+    except subprocess.TimeoutExpired:
+        kill_tree(p)
+        try:
+            so, se = p.communicate(timeout=60)
+        except subprocess.TimeoutExpired:
+            so, se = '', ''
+        heartbeat.beat(f'gate {gate.name} #{pr_number} timed out')
+        return GateResult(gate.name, 'error', f'timed out after {gate.timeout}s (process tree killed)', head_sha,
+                          _sha(so or ''))
+    heartbeat.beat(f'gate {gate.name} #{pr_number} done')
+    return parse(gate, p.returncode, (so or '') + (se or ''), head_sha)
 
 
 def parse(gate, code, out, head_sha):

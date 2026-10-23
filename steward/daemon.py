@@ -24,7 +24,7 @@ import traceback
 from . import actions, audit, commands, config, report, roadmap
 from .agents import roles
 from .decider import PR, GateResult, decide
-from . import judge_runner
+from . import heartbeat, judge_runner
 from .gates import from_artifact
 from .github import App, GitHubError, Repo
 from .state import DAY, State
@@ -38,6 +38,7 @@ LINK = re.compile(r'^\s*/link\s+([A-Za-z0-9]{6,32})\s*$', re.M)
 CLAIMS_MARK = '<!-- steward:claims -->'
 
 
+JUDGE_RETRIES = 2   # re-judges of one head after a harness error before the error stands
 JUDGE_OK = 'judge-ok'   # maintainer label: run the judge gates for a contributor without a merged PR
 
 
@@ -235,9 +236,14 @@ class Steward:
                     m['judge_base'] = self.base_sha()   # main only gained other functions: the result still holds
                 else:
                     m.pop('judge')   # tools, config or these functions changed on main: judge again
+            if 'judge' in m and m.get('judge_errors', 0) < JUDGE_RETRIES and \
+                    any(g.status == 'error' for g in judge_runner.from_json(m['judge'])):
+                m.pop('judge')   # a harness error (timeout, killed build) is not the PR's result: judge again
             if 'judge' not in m:   # once per head and base: the oracle is deterministic
                 m['judge'] = judge_runner.to_json(self.judge.run(self.repo, self.cfg, self.branch, n, head, files))
                 m['judge_base'] = getattr(self.judge, 'last_base', None)
+                if any(g.status == 'error' for g in judge_runner.from_json(m['judge'])):
+                    m['judge_errors'] = m.get('judge_errors', 0) + 1
             gates += judge_runner.from_json(m['judge'])
             if all(g.where == 'judge' for g in self.cfg.gates):
                 status = 'done'
@@ -392,6 +398,7 @@ class Steward:
 
     # -- tick ------------------------------------------------------------
     def tick(self):
+        heartbeat.beat('tick')
         events = []
         self.refresh_config()
         self.repo.ensure_labels(LABEL_COLORS) if self.memo.get('labels_ok') != len(LABEL_COLORS) else None
@@ -400,6 +407,7 @@ class Steward:
         self.poll_commands(events)
         self.sweep(events)
         for p in self.repo.open_prs():
+            heartbeat.beat(f'pr #{p["number"]}')
             try:
                 self.process_pr(p, events)
             except GitHubError as e:
