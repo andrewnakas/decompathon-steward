@@ -98,7 +98,7 @@ def decide(pr, gates, state, cfg, sizes, now):
     # claims: someone else's claim always wins (halo2: lanes make way for contributors)
     for u in units:
         c = state.holder(u, sizes.get(u, 1))
-        if c and c.user != pr.author:
+        if c and not pol.same_person(c.user, pr.author):
             block('request_changes', 'claimed', f'{unit_label(u)} is claimed by {c.user} (claim #{c.id})')
         elif not c and pol.require_claim and not pr.is_maintainer:
             block('request_changes', 'unclaimed', f'claim {unit_label(u)} first (/claim)')
@@ -106,7 +106,8 @@ def decide(pr, gates, state, cfg, sizes, now):
     # owner rule: changing someone else's merged function
     owned = [u for u in units if not (isinstance(u, str) and u in pr.added)]
     exempt = pol.owner_rule_exempt_maintainers and pr.is_maintainer
-    for owner in sorted({state.owner(u) for u in owned} - {None, pr.author}) if not exempt else []:
+    owners = {o for o in {state.owner(u) for u in owned} - {None} if not pol.same_person(o, pr.author)}
+    for owner in sorted(owners) if not exempt else []:
         key = f'{pr.number}:{owner}'
         if key in state.consents:
             continue

@@ -188,3 +188,9 @@ def test_agent_pr_needs_its_acknowledgement_every_time(cfg):
     assert d.action == 'request_changes' and rules(d) == {'agent-ack'}
     acked = agent.replace('- [ ] Agent acknowledgement', '- [x] Agent acknowledgement')
     assert run(cfg, pr(body=acked)).action == 'merge'
+
+
+def test_identities_share_claims_and_ownership():
+    from steward.config import Policy
+    p = Policy(identities=[['owner', 'owneragent']])
+    assert p.same_person('owner', 'owneragent') and p.same_person('x', 'x') and not p.same_person('owner', 'x')

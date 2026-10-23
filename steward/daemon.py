@@ -103,7 +103,8 @@ class Steward:
         self.memo['owners_bootstrapped'] = True
 
     def is_maintainer(self, login):
-        return login in self.cfg.policy.maintainers
+        pol = self.cfg.policy
+        return any(pol.same_person(login, m) for m in pol.maintainers)
 
     # -- comments --------------------------------------------------------
     def poll_commands(self, events):
@@ -271,6 +272,9 @@ class Steward:
         if action == 'escalate' and self.use_ai and self.ai_maintainer and status == 'done' and not pr.draft:
             if 'maint' not in m:   # once per head: the call is cached like the review
                 _, extra = actions.final_action(d, tri, rev)
+                extra = list(extra) + [('project policy (steward.toml identities, trusted)',
+                                        'these GitHub accounts are one person: ' + ' = '.join(g))
+                                       for g in self.cfg.policy.identities]
                 diff = '\n'.join(f'--- {f["filename"]} ({f["status"]})\n{f.get("patch", "")}' for f in files)
                 out, meta = roles.make('maintainer', self.cfg, docs=self.policy_docs()).run(
                     d, gates, extra, diff, p['title'], pr.body, author)
@@ -412,6 +416,7 @@ class Steward:
                 self.process_pr(p, events)
             except GitHubError as e:
                 self.log(f'#{p["number"]}: {e}')
+            self.save()   # a tick can take hours (cold builds): a restart must not lose the judge results so far
         self.save()
         return events
 

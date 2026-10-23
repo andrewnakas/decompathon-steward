@@ -53,6 +53,12 @@ class Policy:
     made_by_checkboxes: list = field(default_factory=list)   # e.g. ["Written by me", "Prepared by an AI agent"]
     agent_marker: str = ''                                   # the made_by box that means an agent prepared it
     agent_checkboxes: list = field(default_factory=list)
+    # accounts of one person, e.g. [["andrewnakas", "nakasmakes"]] (the owner and their own agent account): their
+    # claims and merged work count as each other's, so one never blocks the other
+    identities: list = field(default_factory=list)
+
+    def same_person(self, a, b):
+        return a == b or any(a in g and b in g for g in self.identities)
 
 
 @dataclass
