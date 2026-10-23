@@ -26,8 +26,9 @@ on Windows (no scheduled task), so nothing double-acts. If you go back to Window
 ```sh
 cp -r /mnt/e/decompathon-steward ~/decompathon-steward     # or git clone /mnt/e/decompathon-steward
 cd ~/decompathon-steward && python3 -m venv .venv && . .venv/bin/activate
-pip install discord.py pytest pyelftools rabbitizer splat64 spimdisasm toml pycparser
-python -m pytest -q            # 75 tests must pass
+# no python3-venv/sudo on this box: uv brings its own Python (curl -LsSf https://astral.sh/uv/install.sh | sh)
+uv venv --python 3.12 .venv && uv pip install --python .venv/bin/python -r tools/linux/requirements.txt
+PATH=$PWD/.venv/bin:$PATH python -m pytest -q    # 75 tests must pass (a test runs `python` from PATH)
 claude --version               # the AI backend is the claude CLI (backend = "claude-code"): log in as the owner
 ```
 Run it (judge workspace must exist first, step 4):
@@ -56,6 +57,9 @@ compat shims). On Linux build the same sources natively for a 32-bit Linux host 
   without all four markers.
 - install as `$THPS_TOOLS/mips-as.exe` and `$THPS_CC1` (match.py appends `.exe` to the gas name; keep it).
 - `ZIG` must be a Linux zig (match.py uses `zig cc -E` as the preprocessor).
+- Done on Linux 2026-10-23: `tools/linux/build_thps64_toolchain.sh THPS64_CHECKOUT` (zig 0.16.0 in ~/.local/zig);
+  verified 853/853 files MATCH and `OK: build/main.bin is identical`. requirements.txt pins the Windows judge's
+  splat64 0.50.0 / spimdisasm 1.42.4 / rabbitizer 1.16.2 (splat needs pygfxd + n64img too).
 - **Prove it before the Steward judges anything:** in a checkout of current main, `python tools/split.py`,
   `python tools/gate.py --all` (every file MATCH) and `python tools/build.py` (`OK: build/main.bin is identical`).
   A toolchain that differs by one instruction would silently reject or accept the wrong PRs.

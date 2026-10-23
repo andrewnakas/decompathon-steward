@@ -9,9 +9,10 @@ After=network-online.target
 Type=simple
 WorkingDirectory=%h/decompathon-steward
 Environment=THPS64_JUDGE=%h/thps64-judge
+# (~/.local/bin holds the claude CLI, the AI backend)
 # the judge runs `python tools/gate.py` / `tools/build.py` through the shell: put the venv (with pyelftools,
 # rabbitizer, splat64) first on PATH so `python` resolves there
-Environment=PATH=%h/decompathon-steward/.venv/bin:/usr/local/bin:/usr/bin:/bin
+Environment=PATH=%h/decompathon-steward/.venv/bin:%h/.local/bin:/usr/local/bin:/usr/bin:/bin
 # the judge's toolchain (Linux builds of cc1 / gas / zig), see docs/HANDOFF_LINUX.md
 Environment=THPS_TOOLS=%h/thps64-tools/bin
 Environment=THPS_CC1=%h/thps64-tools/gcc-2.8.1-pm/cc1.exe
