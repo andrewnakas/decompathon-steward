@@ -1,0 +1,58 @@
+# Progress report for ByteMatch (bytematch.dev) and decompilati.onl.
+# Place at .github/workflows/progress-report.yml.
+#
+# Builds an objdiff-format report.json from config/functions.csv and src/funcs/ only:
+# no ROM, no ROM-derived objects. Every merged src/funcs file passed tools/gate.py on
+# the judge machine, so each one counts as a 100% match.
+#
+# ByteMatch and the decompilati.onl GitHub App both read the artifact named
+# <VERSION>_report from successful push runs on the default branch.
+# The optional last step also POSTs the report to decompilati.onl when the repository
+# secret DECOMP_API_KEY is set (not needed if its GitHub App is installed).
+name: Progress report
+
+on:
+  push:
+    branches: [main]
+  pull_request:
+
+permissions:
+  contents: read
+
+concurrency:
+  group: progress-${{ github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  report:
+    runs-on: ubuntu-latest
+    env:
+      VERSION: us_v1.1
+      DECOMP_API_KEY: ${{ secrets.DECOMP_API_KEY }}
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Generate report.json
+        run: >
+          python3 tools/objdiff_report.py
+          --functions config/functions.csv
+          --matched-dir src/funcs --matched-glob 'func_*.c'
+          --version "$VERSION"
+          --source-path src/funcs
+          -o "build/$VERSION/report.json"
+
+      - name: Upload report artifact
+        uses: actions/upload-artifact@v4
+        with:
+          name: ${{ env.VERSION }}_report
+          path: build/${{ env.VERSION }}/report.json
+          if-no-files-found: error
+
+      - name: Send report to decompilati.onl (optional)
+        if: github.event_name == 'push' && github.ref == 'refs/heads/main' && env.DECOMP_API_KEY != ''
+        run: |
+          gzip -kf "build/$VERSION/report.json"
+          curl --fail -sS -X POST "https://decompilati.onl/api/v1/progress?format=objdiff&version=$VERSION&commit=$GITHUB_SHA" \
+            -H "Authorization: Bearer $DECOMP_API_KEY" \
+            -H "Content-Encoding: gzip" \
+            --data-binary "@build/$VERSION/report.json.gz"
