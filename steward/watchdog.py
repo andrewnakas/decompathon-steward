@@ -91,10 +91,10 @@ def main():
     ap.add_argument('bot_args', nargs=argparse.REMAINDER)
     a = ap.parse_args()
     bot_args = a.bot_args[1:] if a.bot_args[:1] == ['--'] else a.bot_args
+    os.makedirs(a.log_dir, exist_ok=True)
     hb = os.path.join(a.log_dir, 'bot.heartbeat')
     out = open(os.path.join(a.log_dir, 'bot.log'), 'a', buffering=1, encoding='utf-8', errors='replace')
     err = open(os.path.join(a.log_dir, 'bot.err.log'), 'a', buffering=1, encoding='utf-8', errors='replace')
-    os.makedirs(a.log_dir, exist_ok=True)
     watch(bot_args, hb, out, err, a.stale or default_stale(), module=a.module)
 
 
