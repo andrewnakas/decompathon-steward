@@ -44,4 +44,8 @@ CC="$CC" ./configure --target=mips-nintendo-nu64 --prefix=/opt/cross --with-gnu-
 touch c-parse.c c-gperf.h   # generated files newer than their sources: no bison/gperf needed
 make CC="$CC" HOST_CC="$CC" CFLAGS=-O1 cc1 > ../gcc281-make.log 2>&1
 cp cc1 cc1.exe
+# C++ parts of the game (tools/match.py `/* compiler: cc1plus */`): g++ from the same sources
+touch cp/parse.c cp/parse.h cp/hash.h
+make CC="$CC" HOST_CC="$CC" CFLAGS=-O1 cc1plus >> ../gcc281-make.log 2>&1
+cp cc1plus cc1plus.exe
 echo "toolchain ready: $W/gcc-2.8.1-pm/cc1.exe, $W/bin/mips-as.exe"
