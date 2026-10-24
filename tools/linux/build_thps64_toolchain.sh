@@ -13,7 +13,7 @@ BU_REV=$(sed -n 's/^BU_REV=//p' "$SRC/build.sh")
 mkdir -p "$W/bin"
 cat > "$W/bin/cc32" <<CC
 #!/bin/sh
-exec "$ZIG" cc -target x86-linux-musl -std=gnu89 -w -Wno-error -Wno-implicit-function-declaration -Wno-int-conversion -Wno-return-type -Wno-incompatible-pointer-types -fno-sanitize=undefined "\$@"
+exec "$ZIG" cc -target x86-linux-musl -std=gnu89 -fwrapv -fno-strict-aliasing -w -Wno-error -Wno-implicit-function-declaration -Wno-int-conversion -Wno-return-type -Wno-incompatible-pointer-types -fno-sanitize=undefined "\$@"
 CC
 chmod +x "$W/bin/cc32"
 CC="$W/bin/cc32"
