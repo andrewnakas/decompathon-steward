@@ -39,7 +39,7 @@ def test_watchdog_restarts_stale_bot(tmp_path, monkeypatch):
         def wait(self, t=None):
             return 0
 
-    def fake_start(args, hb_, out, err):
+    def fake_start(args, hb_, out, err, module="steward.bot"):
         started.append(args)
         os.environ['STEWARD_HEARTBEAT'] = hb_
         heartbeat.beat('start')

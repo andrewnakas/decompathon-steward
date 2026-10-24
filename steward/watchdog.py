@@ -1,6 +1,6 @@
 """Keep the Steward bot running: restart it when it exits or stops making progress.
 
-  python -m steward.watchdog [--stale SECONDS] -- <steward.bot arguments>
+  python -m steward.watchdog [--stale SECONDS] [--log-dir DIR] [--module steward.daemon] -- <bot/daemon arguments>
 
 The bot beats a heartbeat file (steward.heartbeat) at every tick, PR and gate start/end. A gate can legitimately run
 for up to its timeout, after which the gate kills its own process tree; the watchdog is the backstop for a hang
@@ -32,7 +32,7 @@ def default_stale():
     return int(1.2 * Gate.__dataclass_fields__['timeout'].default) + 600
 
 
-def start(bot_args, hb, out, err):
+def start(bot_args, hb, out, err, module='steward.bot'):
     env = dict(os.environ, STEWARD_HEARTBEAT=hb, PYTHONUNBUFFERED='1')
     heartbeat_reset(hb)
     kw = {}
@@ -40,7 +40,8 @@ def start(bot_args, hb, out, err):
         kw['creationflags'] = ABOVE_NORMAL_PRIORITY_CLASS | CREATE_NO_WINDOW
     else:
         kw['start_new_session'] = True
-    return subprocess.Popen([sys.executable, '-u', '-m', 'steward.bot', '--normal-priority', *bot_args],
+    extra = ['--normal-priority'] if module == 'steward.bot' else []
+    return subprocess.Popen([sys.executable, '-u', '-m', module, *extra, *bot_args],
                             stdout=out, stderr=err, stdin=subprocess.DEVNULL, env=env, **kw)
 
 
@@ -50,10 +51,10 @@ def heartbeat_reset(hb):
     heartbeat.beat('started by watchdog')
 
 
-def watch(bot_args, hb, out, err, stale, poll=30, max_restarts=None, sleep=time.sleep):
+def watch(bot_args, hb, out, err, stale, poll=30, max_restarts=None, sleep=time.sleep, module='steward.bot'):
     backoff, restarts = 30, 0
     while True:
-        p = start(bot_args, hb, out, err)
+        p = start(bot_args, hb, out, err, module)
         log(out, f'bot started (pid {p.pid})')
         began = time.time()
         while True:
@@ -85,13 +86,16 @@ def main():
     ap = argparse.ArgumentParser(usage=__doc__)
     ap.add_argument('--stale', type=int, default=None, help='seconds without a heartbeat before a restart')
     ap.add_argument('--log-dir', default=os.path.join(os.path.expanduser('~'), '.decompathon'))
+    ap.add_argument('--module', default='steward.bot', choices=['steward.bot', 'steward.daemon'],
+                    help='steward.daemon: GitHub only, no Discord (one log dir per project)')
     ap.add_argument('bot_args', nargs=argparse.REMAINDER)
     a = ap.parse_args()
     bot_args = a.bot_args[1:] if a.bot_args[:1] == ['--'] else a.bot_args
     hb = os.path.join(a.log_dir, 'bot.heartbeat')
     out = open(os.path.join(a.log_dir, 'bot.log'), 'a', buffering=1, encoding='utf-8', errors='replace')
     err = open(os.path.join(a.log_dir, 'bot.err.log'), 'a', buffering=1, encoding='utf-8', errors='replace')
-    watch(bot_args, hb, out, err, a.stale or default_stale())
+    os.makedirs(a.log_dir, exist_ok=True)
+    watch(bot_args, hb, out, err, a.stale or default_stale(), module=a.module)
 
 
 if __name__ == '__main__':
