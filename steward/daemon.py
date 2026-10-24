@@ -22,7 +22,6 @@ import time
 import traceback
 
 from . import actions, audit, commands, config, report, roadmap
-from .agents import roles
 from .decider import PR, GateResult, decide
 from . import heartbeat, judge_runner
 from .gates import from_artifact
@@ -257,7 +256,9 @@ class Steward:
                 status = 'done'
         d = decide(pr, gates, self.state, self.cfg, self.sizes, time.time())
         tri = rev = None
-        if self.use_ai:
+        use_ai = self.use_ai and self.cfg.ai_enabled
+        if use_ai:
+            from .agents import roles   # only imported when the project allows AI
             if 'triage' not in m:
                 out, meta = roles.make('triage', self.cfg).run(p['title'], pr.body, pr.files, author)
                 m['triage'] = (out.model_dump() if out else None, meta)
@@ -276,7 +277,7 @@ class Steward:
         prog = self.progress(d.units)
         m['progress'] = prog
         action, acts = actions.plan(pr, d, gates, tri, rev, progress=prog)
-        if action == 'escalate' and self.use_ai and self.ai_maintainer and status == 'done' and not pr.draft:
+        if action == 'escalate' and use_ai and self.ai_maintainer and status == 'done' and not pr.draft:
             if 'maint' not in m:   # once per head: the call is cached like the review
                 _, extra = actions.final_action(d, tri, rev)
                 extra = list(extra) + [('project policy (steward.toml identities, trusted)',

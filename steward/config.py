@@ -77,9 +77,16 @@ class Config:
     gates: list = field(default_factory=list)
     policy: Policy = field(default_factory=Policy)
     models: dict = field(default_factory=dict)
+    ai: dict = field(default_factory=dict)         # [ai] enabled = false: no model is ever called
     github: dict = field(default_factory=dict)     # app = slug of Steward's GitHub App
     discord: dict = field(default_factory=dict)    # guild, announce_channel, maintainer_channel
     digest: str = ''            # sha256 of the toml, recorded in every audit entry
+
+    @property
+    def ai_enabled(self):
+        """AI runs only if the project allows it: [ai] enabled is not false AND [models] is set.
+        A project that turns it off cannot be overridden from the command line."""
+        return bool(self.ai.get('enabled', True)) and bool(self.models)
 
     def is_protected(self, path):
         if any(fnmatch.fnmatch(path, p) for p in self.policy.derived_paths):
@@ -135,6 +142,6 @@ def load(path):
             policy.protected_paths.append(must)
     here = os.path.dirname(os.path.abspath(path))
     root = os.path.normpath(os.path.join(here, p.pop('root', '.')))   # project checkout, relative to the toml
-    return Config(root=root, gates=gates, policy=policy, models=d.get('models', {}),
+    return Config(root=root, gates=gates, policy=policy, models=d.get('models', {}), ai=d.get('ai', {}),
                   github=d.get('github', {}), discord=d.get('discord', {}),
                   digest=hashlib.sha256(raw).hexdigest(), **p)

@@ -11,7 +11,11 @@ pass validate(). Model output is clamped here:
 from dataclasses import dataclass, field
 
 from . import report
-from .agents.roles import LABELS
+
+# Triage labels a model may suggest (allowlist). Lives here, not in agents/, so the
+# deterministic core imports nothing from the AI package.
+LABELS = ('decomp', 'tooling', 'docs', 'question', 'bug', 'claim', 'needs-provenance',
+          'good-first-function', 'duplicate', 'hostile-content', 'spam', 'needs-maintainer')
 
 KINDS = ('add_labels', 'upsert_report', 'request_changes', 'ask_owner', 'escalate', 'enqueue_merge')
 STATE_LABELS = {'merge': 'steward:queued', 'wait': 'steward:waiting',

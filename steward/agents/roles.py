@@ -13,8 +13,7 @@ from pydantic import BaseModel, Field
 
 from .base import Role, backend_for, untrusted
 
-LABELS = ('decomp', 'tooling', 'docs', 'question', 'bug', 'claim', 'needs-provenance',
-          'good-first-function', 'duplicate', 'hostile-content', 'spam', 'needs-maintainer')
+from ..actions import LABELS
 
 
 # -- triage ------------------------------------------------------------------

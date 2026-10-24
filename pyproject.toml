@@ -6,7 +6,7 @@ requires-python = ">=3.11"
 dependencies = []
 
 [project.optional-dependencies]
-agents = ["claude-agent-sdk"]
+agents = ["claude-agent-sdk", "pydantic"]   # only needed when a project allows AI
 discord = ["discord.py"]
 test = ["pytest"]
 

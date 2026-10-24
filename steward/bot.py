@@ -7,7 +7,7 @@ steward.toml [discord] section: guild, announce_channel, maintainer_channel (ids
 GitHub stays the source of truth: Discord commands act as the GitHub account a user linked
 with /link (proved by commenting the code on GitHub), so nobody can claim as someone else.
 
-Slash commands: /link /claim /unclaim /next /status /ask
+Slash commands: /link /claim /unclaim /next /status, plus /ask when the project allows AI
 """
 import argparse
 import asyncio
@@ -17,7 +17,6 @@ import traceback
 import discord
 from discord import app_commands
 
-from .agents import roles
 from .daemon import Steward
 from .github import App, Repo
 from .judge_runner import JudgeRunner
@@ -80,11 +79,11 @@ def make_bot(steward, interval):
         await inter.response.defer()
         await inter.followup.send(f'{await run(steward.run_command, "status", [], "")}\n{FOOT}')
 
-    @tree.command(description='Ask a question about contributing (answered from the project docs)')
     async def ask(inter: discord.Interaction, question: str):
         await inter.response.defer(thinking=True)
 
         def answer():
+            from .agents import roles   # only when the project allows AI (see registration below)
             docs = {}
             for path in ('README.md', 'RULES.md', 'CONTRIBUTING.md'):
                 try:
@@ -97,6 +96,9 @@ def make_bot(steward, interval):
             src = f' (from {", ".join(out.sources)})' if out.sources else ''
             return out.answer[:1800] + src + ('\n_A maintainer should confirm this._' if out.needs_human else '')
         await inter.followup.send(f'{await run(answer)}\n-# Steward (AI, answers from the project docs)')
+
+    if steward.use_ai and steward.cfg.ai_enabled:   # [ai] enabled = false: no /ask at all
+        tree.command(description='Ask a question about contributing (answered from the project docs)')(ask)
 
     async def post(channel_id, text):
         if not channel_id:

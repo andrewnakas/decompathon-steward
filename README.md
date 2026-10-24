@@ -10,6 +10,7 @@ The maintainer + orchestrator of the Decompathon decomp jams, built around Claud
   claims with lapse, 7-day owner rule, provenance, merge commits keep authorship.
 - **Everything is logged** in a hash-chained `audit.jsonl`.
 - **Any game:** one `steward.toml` per project (see `examples/decompathon/steward.toml`).
+- **AI optional:** `[ai] enabled = false` in a project's `steward.toml` (or no `[models]` section) turns every model call off, whatever the command line says. The deterministic core then imports nothing from `steward/agents/` and Discord has no `/ask`.
 
 Status: live. It maintains [andrewnakas/thps64](https://github.com/andrewnakas/thps64) as the GitHub App "Decompathon Steward" (judge gates, AI maintainer on escalations, Discord bot), running on Linux under `steward.watchdog` (`tools/linux/`, `docs/HANDOFF_LINUX.md`). See `STATUS.md` and `docs/DESIGN.md`.
 
