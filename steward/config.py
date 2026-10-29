@@ -47,6 +47,9 @@ class Policy:
     maintainers: list = field(default_factory=list)
     require_progress: bool = True   # halo2 #424: keep a change only when it brings code closer to retail
     owner_rule_exempt_maintainers: bool = False
+    # owner opt-in: a maintainer's own PR merges on green gates even when it touches protected paths or no unit
+    # (Steward's own config, steward.toml and .github/**, still goes to a human)
+    maintainers_skip_escalation: bool = False
     required_checkboxes: list = field(default_factory=list)
     # provenance (halo2-decompiled style): tick exactly one "who made this" box; an agent-made PR must also tick
     # every agent box, on every PR (an attestation is never carried over from an earlier PR)

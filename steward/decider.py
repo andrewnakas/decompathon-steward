@@ -4,6 +4,7 @@ No model output is an input here. A merge happens only when every rule below hol
 blocking rule is reported, and the strongest one sets the action:
     escalate (a human must look) > request_changes (author must fix) > wait > merge
 """
+import fnmatch
 import re
 from dataclasses import dataclass, field
 
@@ -70,6 +71,9 @@ def decide(pr, gates, state, cfg, sizes, now):
         block('wait', 'draft', 'PR is a draft')
 
     protected = [f for f in pr.files if cfg.is_protected(f)]
+    skip = pol.maintainers_skip_escalation and pr.is_maintainer
+    if skip:
+        protected = [f for f in protected if f == 'steward.toml' or fnmatch.fnmatch(f, '.github/**')]
     if protected:
         block('escalate', 'protected-path',
               'touches rules/CI/checker files, a maintainer decides: ' + ', '.join(protected[:5]))
@@ -140,7 +144,7 @@ def decide(pr, gates, state, cfg, sizes, now):
     if pol.require_progress and units and reporting and not any(r.details['better'] for r in reporting):
         block('request_changes', 'no-progress', 'no function got closer to retail (no new or better verdicts)')
 
-    if not units and not protected:
+    if not units and not protected and not skip:
         block('escalate', 'no-units', 'changes no decomp unit; a maintainer decides')
 
     if pol.first_timer_needs_human and pr.author_merged_prs == 0 and not pr.is_maintainer:

@@ -194,3 +194,22 @@ def test_identities_share_claims_and_ownership():
     from steward.config import Policy
     p = Policy(identities=[['owner', 'owneragent']])
     assert p.same_person('owner', 'owneragent') and p.same_person('x', 'x') and not p.same_person('owner', 'x')
+
+
+def test_maintainer_skip_escalation_merges_tooling_on_green(cfg):
+    cfg.policy.maintainers_skip_escalation = True
+    d = run(cfg, pr(is_maintainer=True, files=['decomp/core/sub_82000040.cpp', 'tools/check.py']))
+    assert d.action == 'merge'
+    d = run(cfg, pr(is_maintainer=True, files=['tools/check.py']))   # no unit at all
+    assert d.action == 'merge'
+
+
+def test_maintainer_skip_escalation_keeps_steward_config_and_others(cfg):
+    cfg.policy.maintainers_skip_escalation = True
+    d = run(cfg, pr(is_maintainer=True, files=['tools/check.py', 'steward.toml']))
+    assert d.action == 'escalate' and 'protected-path' in rules(d)
+    d = run(cfg, pr(files=['decomp/core/sub_82000040.cpp', 'tools/check.py']))   # not a maintainer
+    assert d.action == 'escalate'
+    g = green()
+    g[1] = GateResult('oracle', 'fail', '2 lost', SHA)
+    assert run(cfg, pr(is_maintainer=True, files=['tools/check.py']), gates=g).action == 'request_changes'
